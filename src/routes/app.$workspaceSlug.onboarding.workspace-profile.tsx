@@ -37,7 +37,7 @@ function WorkspaceProfileOnboarding() {
   const isEditing = isComplete;
 
   const initial: ProfileValues = {
-    ...(WORKSPACE_PROFILE_DEFAULTS as ProfileValues),
+    ...(WORKSPACE_PROFILE_DEFAULTS as unknown as ProfileValues),
     ...(data ?? {}),
   };
 

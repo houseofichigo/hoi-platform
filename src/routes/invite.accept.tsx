@@ -88,6 +88,7 @@ function AcceptInvitePage() {
       </AuthCard>
     );
   }
+  if (!invitation) return null;
 
   // invitation present + pending
   const returnTo = `/invite/accept?token=${encodeURIComponent(token)}`;

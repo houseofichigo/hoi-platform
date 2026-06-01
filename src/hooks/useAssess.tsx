@@ -198,11 +198,12 @@ export function useAssessOutput<T = unknown>(outputKey: string) {
     onMutate: async (value: T) => {
       await qc.cancelQueries({ queryKey });
       const previous = qc.getQueryData<CacheShape>(queryKey);
-      qc.setQueryData<CacheShape>(queryKey, {
-        value,
+      const next: CacheShape = {
+        value: value as unknown,
         seeded: previous?.seeded ?? false,
         touched: true,
-      });
+      };
+      qc.setQueryData(queryKey, () => next);
       return { previous };
     },
     onError: (_err, _vars, context) => {
