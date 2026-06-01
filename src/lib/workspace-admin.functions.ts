@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { Json } from "@/integrations/supabase/types";
 import { MODULES } from "@/lib/curriculum";
 
 const adminDb = supabaseAdmin as any;
@@ -36,6 +37,27 @@ async function countRows(query: PromiseLike<{ count: number | null; error: { mes
   return result.count ?? 0;
 }
 
+async function writeWorkspaceAudit(input: {
+  workspaceId: string;
+  actorId: string;
+  actionType: string;
+  entityType: string;
+  entityId: string;
+  entityLabel?: string | null;
+  metadata?: Json;
+}) {
+  const { error } = await supabaseAdmin.from("audit_log").insert({
+    workspace_id: input.workspaceId,
+    actor_id: input.actorId,
+    action_type: input.actionType,
+    entity_type: input.entityType,
+    entity_id: input.entityId,
+    entity_label: input.entityLabel ?? null,
+    metadata: input.metadata ?? {},
+  });
+  if (error) throw new Error(error.message);
+}
+
 export type WorkspaceAdminOverview = {
   workspace: {
     id: string;
@@ -66,6 +88,11 @@ export type WorkspaceAdminOverview = {
     status: string;
     seatLimit: number | null;
     currentPeriodEnd: string | null;
+    seatUsage: {
+      used: number;
+      limit: number | null;
+      overLimit: boolean;
+    };
   };
 };
 
@@ -215,6 +242,11 @@ export const getWorkspaceAdminOverview = createServerFn({ method: "POST" })
         status: subscription?.status ?? "manual",
         seatLimit: subscription?.seat_limit ?? null,
         currentPeriodEnd: subscription?.current_period_end ?? null,
+        seatUsage: {
+          used: members,
+          limit: subscription?.seat_limit ?? null,
+          overLimit: subscription?.seat_limit != null && members > subscription.seat_limit,
+        },
       },
     };
   });
@@ -229,6 +261,10 @@ export type WorkspaceAdminMember = {
   job_role: string | null;
   department: string | null;
   email: string | null;
+  profileComplete: boolean;
+  assessCompleted: number;
+  assessTotal: number;
+  lastActivityAt: string | null;
 };
 
 export type WorkspaceAdminInvitation = {
@@ -297,9 +333,28 @@ export const getWorkspaceAdminMembers = createServerFn({ method: "POST" })
     if (authErr) throw new Error(authErr.message);
     const emailByUser = new Map(authUsers.users.map((user) => [user.id, user.email ?? null]));
 
+    const progressByUser = new Map<string, { completed: number; lastActivityAt: string | null }>();
+    if (userIds.length > 0) {
+      const { data: progress, error: progressErr } = await supabaseAdmin
+        .from("assess_progress")
+        .select("user_id, status, updated_at")
+        .eq("workspace_id", data.workspaceId)
+        .in("user_id", userIds);
+      if (progressErr) throw new Error(progressErr.message);
+      for (const row of progress ?? []) {
+        const current = progressByUser.get(row.user_id) ?? { completed: 0, lastActivityAt: null };
+        if (row.status === "completed") current.completed += 1;
+        if (!current.lastActivityAt || Date.parse(row.updated_at) > Date.parse(current.lastActivityAt)) {
+          current.lastActivityAt = row.updated_at;
+        }
+        progressByUser.set(row.user_id, current);
+      }
+    }
+
     return {
       members: (members ?? []).map((member) => {
         const profile = profilesByUser.get(member.user_id);
+        const progress = progressByUser.get(member.user_id);
         return {
           user_id: member.user_id,
           role: member.role as WorkspaceRole,
@@ -310,10 +365,103 @@ export const getWorkspaceAdminMembers = createServerFn({ method: "POST" })
           job_role: profile?.job_role ?? null,
           department: profile?.department ?? null,
           email: emailByUser.get(member.user_id) ?? null,
+          profileComplete: !!(profile?.full_name && profile?.job_role),
+          assessCompleted: progress?.completed ?? 0,
+          assessTotal: MODULES.length,
+          lastActivityAt: progress?.lastActivityAt ?? null,
         };
       }),
       pendingInvitations: (invitations ?? []) as WorkspaceAdminInvitation[],
     };
+  });
+
+const InvitationActionInput = WorkspaceInput.extend({
+  invitationId: z.string().uuid(),
+});
+
+export const revokeWorkspaceInvitation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => InvitationActionInput.parse(input))
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    await requireWorkspaceAdmin({
+      supabase: context.supabase,
+      userId: context.userId,
+      workspaceId: data.workspaceId,
+    });
+
+    const { data: invitation, error: beforeErr } = await supabaseAdmin
+      .from("workspace_invitations")
+      .select("id, email, role")
+      .eq("id", data.invitationId)
+      .eq("workspace_id", data.workspaceId)
+      .maybeSingle();
+    if (beforeErr) throw new Error(beforeErr.message);
+    if (!invitation) throw new Error("Invitation not found");
+
+    const { error } = await supabaseAdmin
+      .from("workspace_invitations")
+      .update({ status: "revoked" })
+      .eq("id", data.invitationId)
+      .eq("workspace_id", data.workspaceId)
+      .eq("status", "pending");
+    if (error) throw new Error(error.message);
+    await writeWorkspaceAudit({
+      workspaceId: data.workspaceId,
+      actorId: context.userId,
+      actionType: "workspace_invitation_revoked",
+      entityType: "workspace_invitation",
+      entityId: data.invitationId,
+      entityLabel: invitation.email,
+      metadata: { role: invitation.role },
+    });
+    return { ok: true };
+  });
+
+const RemoveMemberInput = WorkspaceInput.extend({
+  userId: z.string().uuid(),
+});
+
+export const removeWorkspaceMember = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => RemoveMemberInput.parse(input))
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    await requireWorkspaceAdmin({
+      supabase: context.supabase,
+      userId: context.userId,
+      workspaceId: data.workspaceId,
+    });
+
+    if (data.userId === context.userId) {
+      throw new Error("You cannot remove your own admin access.");
+    }
+
+    const { data: target, error: targetErr } = await supabaseAdmin
+      .from("workspace_members")
+      .select("role")
+      .eq("workspace_id", data.workspaceId)
+      .eq("user_id", data.userId)
+      .maybeSingle();
+    if (targetErr) throw new Error(targetErr.message);
+    if (!target) throw new Error("Workspace member not found");
+    if (["owner", "admin"].includes(target.role)) {
+      throw new Error("Owner and admin access is managed by House of Ichigo.");
+    }
+
+    const { error } = await supabaseAdmin
+      .from("workspace_members")
+      .delete()
+      .eq("workspace_id", data.workspaceId)
+      .eq("user_id", data.userId);
+    if (error) throw new Error(error.message);
+    await writeWorkspaceAudit({
+      workspaceId: data.workspaceId,
+      actorId: context.userId,
+      actionType: "workspace_member_removed",
+      entityType: "workspace_member",
+      entityId: data.userId,
+      metadata: { role: target.role },
+    });
+    return { ok: true };
   });
 
 export type WorkspaceAdminBillingData = {

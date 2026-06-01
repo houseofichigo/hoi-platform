@@ -7,6 +7,7 @@ import { z } from "zod";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { supabase } from "@/integrations/supabase/client";
 import { sendWorkspaceInvite } from "@/lib/invitations.functions";
+import { revokeWorkspaceInvitation } from "@/lib/workspace-admin.functions";
 
 export const Route = createFileRoute("/app/$workspaceSlug/invite")({
   component: InvitePage,
@@ -18,6 +19,7 @@ function InvitePage() {
   const { workspace, isAdmin, loading } = useWorkspace();
   const qc = useQueryClient();
   const sendInvite = useServerFn(sendWorkspaceInvite);
+  const revokeInvite = useServerFn(revokeWorkspaceInvitation);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"member" | "viewer">("member");
   const [submitting, setSubmitting] = useState(false);
@@ -51,15 +53,14 @@ function InvitePage() {
 
   const revoke = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("workspace_invitations")
-        .update({ status: "revoked" })
-        .eq("id", id);
-      if (error) throw error;
+      if (!workspace) throw new Error("Workspace not ready");
+      await revokeInvite({ data: { workspaceId: workspace.id, invitationId: id } });
     },
     onSuccess: () => {
       toast.success("Invitation revoked");
       qc.invalidateQueries({ queryKey: ["pending-invitations", workspace?.id] });
+      qc.invalidateQueries({ queryKey: ["workspace-admin", "members", workspace?.id] });
+      qc.invalidateQueries({ queryKey: ["workspace-admin", "overview", workspace?.id] });
     },
     onError: (e: Error) => toast.error(e.message),
   });

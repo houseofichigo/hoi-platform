@@ -28,6 +28,7 @@ function WorkspaceAdminBillingPage() {
     );
   }
   if (!data) return null;
+  const overLimit = data.seats.limit != null && data.seats.used > data.seats.limit;
 
   return (
     <div className="space-y-6">
@@ -53,8 +54,18 @@ function WorkspaceAdminBillingPage() {
           label="Seats"
           value={data.seats.limit ? `${data.seats.used}/${data.seats.limit}` : `${data.seats.used}`}
           detail={data.seats.limit ? "licences used" : "licence limit managed by HOI"}
+          warning={overLimit}
         />
       </section>
+
+      {overLimit && (
+        <section className="rounded-md border border-amber-300 bg-amber-50 p-4">
+          <p className="text-[13px] font-medium text-amber-800">Seat limit exceeded</p>
+          <p className="mt-1 text-[13px] text-amber-800">
+            This workspace has more active members than the current licence limit. Contact House of Ichigo to adjust the plan or seats.
+          </p>
+        </section>
+      )}
 
       <section className="rounded-md border border-chalk bg-white p-5">
         <div className="flex items-center gap-2">
@@ -70,9 +81,9 @@ function WorkspaceAdminBillingPage() {
   );
 }
 
-function BillingMetric({ label, value, detail }: { label: string; value: string | number; detail: string }) {
+function BillingMetric({ label, value, detail, warning = false }: { label: string; value: string | number; detail: string; warning?: boolean }) {
   return (
-    <div className="rounded-md border border-chalk bg-white p-5">
+    <div className={["rounded-md border bg-white p-5", warning ? "border-amber-300" : "border-chalk"].join(" ")}>
       <p className="eyebrow-muted">{label}</p>
       <p className="mt-3 text-[28px] font-semibold capitalize text-navy">{value}</p>
       <p className="mt-2 text-[13px] text-graphite">{detail}</p>

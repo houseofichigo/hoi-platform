@@ -21,6 +21,7 @@ export const Route = createFileRoute("/admin/workspaces")({
 
 function AdminWorkspaces() {
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<"all" | "needs_setup" | "pending_invites" | "open_flags">("all");
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
   const getWorkspaces = useServerFn(getAdminWorkspaces);
   const { data = [], isLoading, error } = useQuery<AdminWorkspaceListItem[]>({
@@ -30,9 +31,14 @@ function AdminWorkspaces() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return data;
-    return data.filter((ws) => [ws.name, ws.slug, ws.plan].join(" ").toLowerCase().includes(q));
-  }, [data, search]);
+    return data.filter((ws) => {
+      if (filter === "needs_setup" && ws.onboarding_state !== "incomplete") return false;
+      if (filter === "pending_invites" && ws.pending_invites === 0) return false;
+      if (filter === "open_flags" && ws.open_governance_flags === 0) return false;
+      if (!q) return true;
+      return [ws.name, ws.slug, ws.plan].join(" ").toLowerCase().includes(q);
+    });
+  }, [data, search, filter]);
   const selected = filtered.find((ws) => ws.id === selectedWorkspaceId) ?? null;
 
   return (
@@ -49,6 +55,21 @@ function AdminWorkspaces() {
         placeholder="Search workspaces..."
         className="mb-4 w-full rounded-md border border-chalk bg-white px-3 py-2 text-[14px] outline-none focus:border-terracotta"
       />
+
+      <div className="mb-4 flex flex-wrap gap-2">
+        <FilterButton active={filter === "all"} onClick={() => setFilter("all")}>
+          All
+        </FilterButton>
+        <FilterButton active={filter === "needs_setup"} onClick={() => setFilter("needs_setup")}>
+          Needs setup
+        </FilterButton>
+        <FilterButton active={filter === "pending_invites"} onClick={() => setFilter("pending_invites")}>
+          Pending invites
+        </FilterButton>
+        <FilterButton active={filter === "open_flags"} onClick={() => setFilter("open_flags")}>
+          Open flags
+        </FilterButton>
+      </div>
 
       {isLoading ? (
         <p className="text-[13px] text-slate">Loading workspaces...</p>
@@ -112,6 +133,29 @@ function AdminWorkspaces() {
 
       {selected && <WorkspaceDrawer workspace={selected} onClose={() => setSelectedWorkspaceId(null)} />}
     </AdminShell>
+  );
+}
+
+function FilterButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "rounded-full border px-3 py-1.5 text-[12px]",
+        active ? "border-terracotta bg-terracotta text-white" : "border-chalk bg-white text-navy hover:bg-mist",
+      ].join(" ")}
+    >
+      {children}
+    </button>
   );
 }
 

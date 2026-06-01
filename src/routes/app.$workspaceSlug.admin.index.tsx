@@ -29,11 +29,19 @@ function WorkspaceAdminOverviewPage() {
     );
   }
   if (!data) return null;
+  const seatDetail = data.billing.seatUsage.limit
+    ? `${data.billing.seatUsage.used}/${data.billing.seatUsage.limit} licences used`
+    : `${data.billing.seatUsage.used} active member(s)`;
 
   return (
     <div className="space-y-6">
       <section className="grid grid-cols-1 gap-3 md:grid-cols-4">
-        <AdminMetric label="Members" value={data.counts.members} detail={`${data.counts.pendingInvites} pending invite(s)`} />
+        <AdminMetric
+          label="Members"
+          value={data.counts.members}
+          detail={`${data.counts.pendingInvites} pending invite(s) · ${seatDetail}`}
+          warning={data.billing.seatUsage.overLimit}
+        />
         <AdminMetric label="Assess progress" value={`${data.counts.assessComplete}/${data.counts.assessTotal}`} detail="completed modules" />
         <AdminMetric label="Build portfolio" value={data.counts.useCases} detail={`${data.counts.scoredUseCases} scored · ${data.counts.approvedUseCases} approved`} />
         <AdminMetric label="Scale attention" value={data.counts.openGovernanceFlags} detail={`${data.counts.pendingPilotReviews} pilot review(s) pending`} />
@@ -75,12 +83,13 @@ function WorkspaceAdminOverviewPage() {
   );
 }
 
-function AdminMetric({ label, value, detail }: { label: string; value: string | number; detail: string }) {
+function AdminMetric({ label, value, detail, warning = false }: { label: string; value: string | number; detail: string; warning?: boolean }) {
   return (
-    <div className="rounded-md border border-chalk bg-white p-4">
+    <div className={["rounded-md border bg-white p-4", warning ? "border-amber-300" : "border-chalk"].join(" ")}>
       <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate">{label}</p>
       <p className="mt-2 text-[28px] font-semibold leading-none text-navy">{value}</p>
       <p className="mt-2 text-[12px] text-graphite">{detail}</p>
+      {warning && <p className="mt-2 text-[12px] text-amber-700">Seat usage is above the current licence limit.</p>}
     </div>
   );
 }
