@@ -26,7 +26,7 @@ export function useHoiAdmin(): HoiAdminAccess {
     enabled: !!user,
     queryKey: ["hoi-admin", user?.id],
     queryFn: async (): Promise<{ role: HoiAdminRole } | null> => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("hoi_admin_users")
         .select("role")
         .eq("user_id", user!.id)

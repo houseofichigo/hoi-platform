@@ -3,6 +3,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { HoiAdminRole } from "@/hooks/useHoiAdmin";
 
+const adminDb = supabaseAdmin as any;
+
 const ADMIN_ROLES: HoiAdminRole[] = [
   "owner",
   "admin",
@@ -42,7 +44,7 @@ type WorkspaceRow = {
 };
 
 async function getAdminAccess(userId: string) {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await adminDb
     .from("hoi_admin_users")
     .select("role, status")
     .eq("user_id", userId)
@@ -306,8 +308,8 @@ export const getAdminBilling = createServerFn({ method: "GET" })
 
     const [{ data: plans, error: plansErr }, { data: subs, error: subsErr }, { data: workspaces, error: wsErr }] =
       await Promise.all([
-        supabaseAdmin.from("plans").select("id, name, active, seat_limit, monthly_price_cents, stripe_price_id").order("id"),
-        supabaseAdmin
+        adminDb.from("plans").select("id, name, active, seat_limit, monthly_price_cents, stripe_price_id").order("id"),
+        adminDb
           .from("workspace_subscriptions")
           .select("workspace_id, plan_id, status, stripe_customer_id, stripe_subscription_id, current_period_end"),
         supabaseAdmin.from("workspaces").select("id, name, plan"),
@@ -436,7 +438,7 @@ export const getAdminAudit = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await requireHoiAdmin(context.userId, ["owner", "admin", "support", "read_only"]);
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await adminDb
       .from("hoi_admin_audit_log")
       .select("id, actor_id, action_type, entity_type, entity_id, entity_label, metadata, created_at")
       .order("created_at", { ascending: false })
@@ -449,7 +451,7 @@ export const getAdminSettings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await requireHoiAdmin(context.userId);
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await adminDb
       .from("hoi_admin_users")
       .select("user_id, role, status, created_at")
       .order("created_at", { ascending: true });
