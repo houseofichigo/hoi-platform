@@ -162,7 +162,7 @@ export const STEPS: StepDef[] = [
         kind: "radio",
         required: true,
         cols: 2,
-        helper: "This drives SDAIA transparency and user-disclosure checks.",
+        helper: "This drives EU AI Act transparency and user-disclosure checks.",
         options: [
           { value: "yes", label: "Yes" },
           { value: "no", label: "No" },
@@ -330,7 +330,7 @@ export const STEPS: StepDef[] = [
         kind: "radio",
         required: true,
         cols: 2,
-        helper: "This drives PDPL transfer review and NCA/SAMA security review checks.",
+        helper: "This drives GDPR transfer review and security/sector regulator security review checks.",
         options: [
           { value: "yes", label: "Yes" },
           { value: "no", label: "No" },
@@ -354,7 +354,7 @@ export const STEPS: StepDef[] = [
         kind: "radio",
         required: true,
         cols: 2,
-        helper: "This drives SAIP IP review and vendor evidence checks.",
+        helper: "This drives IP review and vendor evidence checks.",
         options: [
           { value: "yes", label: "Yes" },
           { value: "no", label: "No" },
@@ -416,7 +416,7 @@ export const STEPS: StepDef[] = [
         kind: "radio",
         required: true,
         cols: 2,
-        helper: "This drives PDPL privacy-impact review and human oversight checks.",
+        helper: "This drives GDPR privacy-impact review and human oversight checks.",
         options: [
           { value: "yes", label: "Yes" },
           { value: "no", label: "No" },

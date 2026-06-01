@@ -7,7 +7,7 @@ import { MODULES, type ModuleId } from "@/lib/curriculum";
 import { ARTIFACTS, GATES, isOutputPresent } from "@/lib/assess/completion";
 import { fnv1aHash } from "@/lib/evidence/hash";
 
-const ASSESSMENT_SCORING_VERSION = "1.0-ksa-executive";
+const ASSESSMENT_SCORING_VERSION = "1.0-hoi-executive";
 
 type GateDecision = {
   gate_number: number;
@@ -155,7 +155,7 @@ export function computeAssessmentScore(input: {
     module_scores: moduleScores,
     weakest_capability: weakest,
     evidence_confidence: evidenceConfidence,
-    ksa_readiness_indicators: {
+    governance_readiness_indicators: {
       data_governance: (categoryScores.data_readiness as { score: number }).score,
       ai_governance: (categoryScores.governance_readiness as { score: number }).score,
       deployment_control: (categoryScores.operating_model as { score: number }).score,
@@ -168,7 +168,7 @@ export function computeAssessmentScore(input: {
 function buildRecommendedActions(weakestKey: string | undefined, score: number, confidence: number): string[] {
   const actions: string[] = [];
   if (weakestKey === "data_readiness") actions.push("Confirm data ownership, classification, access, and quality evidence before advancing high-autonomy Build use cases.");
-  if (weakestKey === "governance_readiness") actions.push("Prepare SDAIA, PDPL, NDMO, NCA/SAMA, and SAIP review evidence before deployment planning.");
+  if (weakestKey === "governance_readiness") actions.push("Prepare EU AI Act, GDPR, ISO 42001, security/sector regulator, and IP review evidence before deployment planning.");
   if (weakestKey === "technology_delivery") actions.push("Clarify integration, rollback, monitoring, and HITL controls before production design.");
   if (weakestKey === "operating_model") actions.push("Assign service ownership, operating routines, audit cadence, and post-pilot review criteria.");
   if (score < 55) actions.push("Route the next step through Discover resources before approving new pilots.");

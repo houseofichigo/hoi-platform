@@ -57,9 +57,9 @@ export const M02_OCR_CONTENT = {
     why:
       "Contextual data is the external rules the assistant must respect — laws, mandates, industry-specific requirements. They never live in your database; they live in regulation, contracts, and internal policy. Miss one and you ship a non-compliant system.",
     example:
-      "For OCR in Saudi Arabia, the rules are: ZATCA invoice requirements, SDAIA AI governance classification, PDPL for supplier contacts, NDMO data governance, internal AP policy, and supplier contract terms.",
+      "For OCR in the EU, the rules are: e-invoicing invoice requirements, EU AI Act governance classification, GDPR for supplier contacts, ISO 42001 data governance, internal AP policy, and supplier contract terms.",
     whatToNotice: [
-      "Contextual rules have a regime (PDPL · SDAIA · NDMO · sector · internal) and a consequence for ignoring them",
+      "Contextual rules have a regime (GDPR · EU AI Act · ISO 42001 · sector · internal) and a consequence for ignoring them",
       "Internal policy counts as contextual data — even if no regulator enforces it",
       "Cross-border invoices add residency and transfer rules — they don't just add VAT lines",
     ],
@@ -72,7 +72,7 @@ export const M02_OCR_CONTENT = {
     why:
       "Task-specific data is the deliberately-chosen examples that prove your system actually works. Not the production stream — a curated set of clean cases, edge cases, and adversarial cases. This is the data you point at every prompt iteration in M03 and every evaluation run in M11.",
     example:
-      "A minimum viable OCR test set is 15 invoices: 5 clean (textbook layouts, single page, Saudi suppliers), 5 edge cases (missing PO reference, foreign currency, multi-page, hand-written annotation, duplicate of a prior month), 5 adversarial (typo'd amounts, swapped VAT rate, invented supplier name, manipulated total, scan-quality stress test).",
+      "A minimum viable OCR test set is 15 invoices: 5 clean (textbook layouts, single page, EU suppliers), 5 edge cases (missing PO reference, foreign currency, multi-page, hand-written annotation, duplicate of a prior month), 5 adversarial (typo'd amounts, swapped VAT rate, invented supplier name, manipulated total, scan-quality stress test).",
     whatToNotice: [
       "Edge cases are the ones that fail silently in production — explicitly bait them",
       "Adversarial cases are not 'errors' — they're tests of refusal, not of accuracy",
@@ -186,7 +186,7 @@ export const M02_OCR_CONTENT = {
           "No archive — only current month available",
         ],
         why:
-          "12 months covers the seasonal cycle and gives enough vendor variety for evaluation. Multi-year is over-collection (PDPL minimisation). Per-supplier portals fragment access. No archive = no Gate 2 — you can't evaluate accuracy without a labelled past.",
+          "12 months covers the seasonal cycle and gives enough vendor variety for evaluation. Multi-year is over-collection (GDPR minimisation). Per-supplier portals fragment access. No archive = no Gate 2 — you can't evaluate accuracy without a labelled past.",
         governance: {
           ownership: "AP Team Lead",
           lineage: "Posted invoices archived nightly with full metadata",
@@ -199,7 +199,7 @@ export const M02_OCR_CONTENT = {
     computed: {
       label: "Layer 01 readout — five sources, five named owners, four read-only APIs",
       body:
-        "No source has 'IT' as the owner — every entry names an accountable individual. Four of five sources are reachable via read-only API; the supplier master is the only read-write path, and IBAN changes are gated by HITL. Privacy classification is consistent: financial + personal data, no residency complications inside Saudi Arabia.",
+        "No source has 'IT' as the owner — every entry names an accountable individual. Four of five sources are reachable via read-only API; the supplier master is the only read-write path, and IBAN changes are gated by HITL. Privacy classification is consistent: financial + personal data, no residency complications inside EU.",
     },
   },
 
@@ -209,44 +209,44 @@ export const M02_OCR_CONTENT = {
     rows: [
       {
         label: "VAT calculation rules",
-        value: "Saudi VAT — standard 15% + ZATCA e-invoicing controls",
+        value: "VAT — standard rate + e-invoicing controls",
         options: [
-          "Saudi VAT — standard 15% only",
-          "Saudi VAT — standard 15% + ZATCA e-invoicing controls",
-          "GCC multi-country flow",
+          "VAT — standard rate only",
+          "VAT — standard rate + e-invoicing controls",
+          "Cross-border multi-country flow",
           "Let the model figure out the right rate",
         ],
         why:
-          "Saudi VAT and ZATCA controls need deterministic rule tables, not model guesses. 'Let the model figure out' is the failure mode.",
+          "VAT and e-invoicing controls need deterministic rule tables, not model guesses. 'Let the model figure out' is the failure mode.",
         governance: {
           ownership: "Tax Manager",
-          lineage: "ZATCA requirements -> internal VAT policy doc -> applied to OCR rule engine",
-          quality: "High — Saudi rates and e-invoicing controls documented, schedule updates monitored",
+          lineage: "e-invoicing requirements -> internal VAT policy doc -> applied to OCR rule engine",
+          quality: "High — local rates and e-invoicing controls documented, schedule updates monitored",
           access: "Internal policy document + rate API (if available)",
           privacy: "Internal — no personal data",
         },
       },
       {
         label: "Data protection regime",
-        value: "PDPL — supplier contacts are personal data; processing purpose documented",
+        value: "GDPR — supplier contacts are personal data; processing purpose documented",
         options: [
           "Not applicable — these are business contacts",
-          "PDPL — supplier contacts are personal data; processing purpose documented",
-          "PDPL + sector-specific (banking/SAMA)",
+          "GDPR — supplier contacts are personal data; processing purpose documented",
+          "GDPR + sector-specific (banking/sector regulator)",
           "We'll handle it case-by-case",
         ],
         why:
-          "Business email addresses and named individuals are personal data under PDPL. Sector overlays apply for regulated industries. 'Case-by-case' is what gets flagged in audit.",
+          "Business email addresses and named individuals are personal data under GDPR. Sector overlays apply for regulated industries. 'Case-by-case' is what gets flagged in audit.",
         governance: {
           ownership: "Data Protection Officer",
-          lineage: "PDPL processing purpose documented in the processing register",
+          lineage: "GDPR processing purpose documented in the processing register",
           quality: "High — documented in processing register",
           access: "Policy in shared drive; processing register in compliance tool",
-          privacy: "Personal data, purpose-limited processing, transfer review if data leaves KSA",
+          privacy: "Personal data, purpose-limited processing, transfer review if data leaves EU",
         },
       },
       {
-        label: "SDAIA classification",
+        label: "EU AI Act classification",
         value: "Standard-control — AP automation is not a high-impact AI decision",
         options: [
           "Not applicable — we don't use AI",
@@ -255,10 +255,10 @@ export const M02_OCR_CONTENT = {
           "High-impact — financial decisioning",
         ],
         why:
-          "AP automation extracts and validates; it does not decide creditworthiness, employment, or biometric identity. Treat it as standard-control AI with SDAIA documentation, PDPL posture, and NDMO data classification. High-impact would add stronger validation and oversight.",
+          "AP automation extracts and validates; it does not decide creditworthiness, employment, or biometric identity. Treat it as standard-control AI with EU AI Act documentation, GDPR posture, and ISO 42001 data classification. High-impact would add stronger validation and oversight.",
         governance: {
           ownership: "Head of Legal / DPO",
-          lineage: "SDAIA/PDPL/NDMO analysis -> internal classification memo",
+          lineage: "EU AI Act/GDPR/ISO 42001 analysis -> internal classification memo",
           quality: "Medium — classification memo exists but not formally signed off",
           access: "Compliance shared drive",
           privacy: "Internal — no personal data in the classification itself",
@@ -266,10 +266,10 @@ export const M02_OCR_CONTENT = {
       },
       {
         label: "Internal approval policy",
-        value: "Two-tier — <SAR 4k auto-route to category owner; ≥SAR 4k requires CFO co-signature",
+        value: "Two-tier — <EUR 4k auto-route to category owner; ≥EUR 4k requires CFO co-signature",
         options: [
           "Single tier — everything goes to the CFO",
-          "Two-tier — <SAR 4k auto-route to category owner; ≥SAR 4k requires CFO co-signature",
+          "Two-tier — <EUR 4k auto-route to category owner; ≥EUR 4k requires CFO co-signature",
           "Three-tier — by amount × supplier risk × cost centre",
           "Whatever the AP team decides on the day",
         ],
@@ -285,28 +285,28 @@ export const M02_OCR_CONTENT = {
       },
       {
         label: "Cross-border / residency rules",
-        value: "KSA-hosted supplier flow — transfer review for occasional offshore processing",
+        value: "EU-hosted supplier flow — transfer review for occasional offshore processing",
         options: [
-          "All processing stays in KSA — no extra transfer rules",
-          "KSA-hosted supplier flow — transfer review for occasional offshore processing",
-          "Mixed KSA + global vendor — processor and transfer review",
+          "All processing stays in EU — no extra transfer rules",
+          "EU-hosted supplier flow — transfer review for occasional offshore processing",
+          "Mixed EU + global vendor — processor and transfer review",
           "Case-by-case transfer impact assessment",
         ],
         why:
           "'No extra rules' fails the moment a vendor or processor touches personal data outside the approved hosting pattern. Cross-border transfer and processor evidence need to be explicit.",
         governance: {
           ownership: "Data Protection Officer",
-          lineage: "PDPL transfer review stored in compliance tool; processor terms per supplier",
+          lineage: "GDPR transfer review stored in compliance tool; processor terms per supplier",
           quality: "High for approved processors; gaps for one-off transfers",
           access: "Compliance tool + signed copies in supplier records",
-          privacy: "Personal data, cross-border review, KSA residency preferred",
+          privacy: "Personal data, cross-border review, EU residency preferred",
         },
       },
     ],
     computed: {
       label: "Layer 02 readout — five regimes, all named, two with known quality gaps",
       body:
-        "VAT, PDPL, and SDAIA classification are documented. Internal approval policy is the weakest link — the gap between the written policy (v3.2) and actual practice (~10% drift) shows up at every audit. Cross-border processor evidence is good for active suppliers but thin for one-off transfers. No regime is unaddressed; two have known quality gaps to close before Build.",
+        "VAT, GDPR, and EU AI Act classification are documented. Internal approval policy is the weakest link — the gap between the written policy (v3.2) and actual practice (~10% drift) shows up at every audit. Cross-border processor evidence is good for active suppliers but thin for one-off transfers. No regime is unaddressed; two have known quality gaps to close before Build.",
     },
   },
 
@@ -316,10 +316,10 @@ export const M02_OCR_CONTENT = {
     rows: [
       {
         label: "Clean cases (5 invoices)",
-        value: "Textbook layouts · single page · Saudi suppliers · standard 15% VAT",
+        value: "Textbook layouts · single page · EU suppliers · standard 15% VAT",
         options: [
           "All the same supplier (low variance)",
-          "Textbook layouts · single page · Saudi suppliers · standard 15% VAT",
+          "Textbook layouts · single page · EU suppliers · standard 15% VAT",
           "A mix of every layout we've ever seen",
           "Random sample from last month's archive",
         ],
@@ -388,8 +388,8 @@ export const M02_OCR_CONTENT = {
     "We have no processor or transfer evidence for occasional offshore supplier processing",
     "Our test set has no edge cases — only clean invoices ever get evaluated",
     "We have no adversarial cases — fraud detection is entirely manual review",
-    "PDPL lawful basis for supplier contacts isn't documented in our processing register",
-    "SDAIA classification has never been formally signed off (memo exists, no signature)",
+    "GDPR lawful basis for supplier contacts isn't documented in our processing register",
+    "EU AI Act classification has never been formally signed off (memo exists, no signature)",
   ] as const,
 
   seeds: {
@@ -430,8 +430,8 @@ export function getM02ContextualRuleOptions(ctx: InvoiceOcrProfileContext): stri
 
   return [
     vatLine,
-    "PDPL — supplier contacts and personal data handling",
-    "SDAIA AI governance classification (low / limited / high risk)",
+    "GDPR — supplier contacts and personal data handling",
+    "EU AI Act governance classification (low / limited / high risk)",
     "Internal approval policy (thresholds, signatures)",
     crossBorder,
     "Sector-specific regulation (if our industry has one)",

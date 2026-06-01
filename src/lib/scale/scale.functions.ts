@@ -95,16 +95,10 @@ async function persistDerivedFlags(
 
 function reviewerRoleForSource(source: DerivedGovernanceFlag["rule_source"]): string {
   switch (source) {
-    case "pdpl":
+    case "gdpr":
       return "DPO";
-    case "sdaia":
-      return "RAIO / AI governance owner";
-    case "ndmo":
-      return "CDO / Data Governance";
-    case "nca_sama":
-      return "CISO";
-    case "saip":
-      return "Legal";
+    case "eu_ai_act":
+      return "AI governance owner";
     case "internal_policy":
     default:
       return "Business owner";
@@ -112,20 +106,20 @@ function reviewerRoleForSource(source: DerivedGovernanceFlag["rule_source"]): st
 }
 
 function evidenceForRule(ruleCode: DerivedGovernanceFlag["rule_code"]): string[] {
-  if (ruleCode.startsWith("PDPL_")) {
-    return ["processing purpose", "data minimisation note", "privacy impact review", "cross-border transfer evidence"];
+  if (ruleCode === "DPIA_REQUIRED" || ruleCode === "DATA_MINIMISATION" || ruleCode === "RIGHT_TO_EXPLANATION") {
+    return ["processing purpose", "data minimisation note", "DPIA decision", "data subject impact note"];
   }
-  if (ruleCode.startsWith("SDAIA_")) {
+  if (
+    ruleCode === "EU_AI_ACT_HIGH_RISK" ||
+    ruleCode === "CONFORMITY_ASSESSMENT" ||
+    ruleCode === "HITL_REQUIRED_ART14" ||
+    ruleCode === "TRANSPARENCY_ART13" ||
+    ruleCode === "ARTICLE_11_DOCUMENTATION"
+  ) {
     return ["AI system purpose", "human oversight design", "validation results", "technical documentation"];
   }
-  if (ruleCode.startsWith("NDMO_")) {
-    return ["data owner", "classification", "lineage", "quality controls"];
-  }
-  if (ruleCode.startsWith("NCA_")) {
+  if (ruleCode === "SECURITY_REVIEW_REQUIRED") {
     return ["security review", "integration inventory", "access controls", "incident owner"];
-  }
-  if (ruleCode.startsWith("SAIP_")) {
-    return ["IP ownership note", "training-data origin", "third-party licence check"];
   }
   return ["owner sign-off", "change record", "rollback path"];
 }
@@ -440,7 +434,7 @@ export const moveRoadmapEntry = createServerFn({ method: "POST" })
       actorId: userId,
     });
 
-    // Stage-driven governance flags (SDAIA technical documentation on reaching
+    // Stage-driven governance flags (EU AI Act documentation on reaching
     // production, CHANGE_MANAGEMENT on Pilot -> Production). Idempotent via
     // the (use_case_id, rule_code) unique constraint, so re-entry is safe.
     try {
@@ -477,7 +471,7 @@ export const moveRoadmapEntry = createServerFn({ method: "POST" })
         // approval; re-running them is harmless (idempotent) but noisy in
         // notifications, so we narrow to the two stage-only codes.
         (f) =>
-          f.rule_code === "SDAIA_TECHNICAL_DOCUMENTATION" ||
+          f.rule_code === "ARTICLE_11_DOCUMENTATION" ||
           f.rule_code === "CHANGE_MANAGEMENT",
       );
       if (stageDerived.length > 0) {
@@ -1208,7 +1202,7 @@ export const generateEvidencePack = createServerFn({ method: "POST" })
         "Assessment score snapshot and maturity rationale",
         "Use-case score snapshots with reason codes",
         "Priority matrix and official classifications",
-        "KSA governance flag register with reviewer and evidence requirements",
+        "EU/HOI governance flag register with reviewer and evidence requirements",
         "Roadmap stage history and blocked transition events",
         "Pilot review evidence before production promotion",
         "Closure or accepted-risk notes for active deployment blockers",

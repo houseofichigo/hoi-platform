@@ -62,7 +62,7 @@ function ScaleOverview() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `ksa-evidence-pack-${workspace.slug}-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `hoi-evidence-pack-${workspace.slug}-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success("Evidence pack generated");

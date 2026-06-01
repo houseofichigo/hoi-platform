@@ -2,8 +2,8 @@ import type { ProfileSchema } from "./schema";
 
 const COUNTRY_GROUPS = [
   {
-    label: "Saudi & GCC",
-    options: ["Saudi Arabia", "UAE", "Qatar", "Kuwait", "Bahrain", "Oman"],
+    label: "European Union",
+    options: ["EU", "France", "Belgium", "Luxembourg", "Germany", "Netherlands", "Spain", "Italy"],
   },
   {
     label: "Western Europe",
@@ -35,14 +35,14 @@ const ENTITY_TYPES = [
   "Critical infrastructure",
   "Non-profit / foundation",
 ] as const;
-const KSA_REGULATORY_OVERLAYS = ["SDAIA", "PDPL", "NDMO", "NCA", "SAMA", "SAIP"] as const;
+const REGULATORY_OVERLAYS = ["EU AI Act", "GDPR", "ISO 42001", "NIST AI RMF", "Internal policy"] as const;
 const DATA_RESIDENCY_LEVELS = [
   "Low sensitivity",
-  "KSA-hosted preferred",
-  "KSA-hosted required",
+  "EU-hosted preferred",
+  "EU-hosted required",
   "Unknown / needs review",
 ] as const;
-const LANGUAGE_OPTIONS = ["English", "Arabic later", "Bilingual later"] as const;
+const LANGUAGE_OPTIONS = ["English", "French later", "Multilingual later"] as const;
 
 const LLM_GROUPS = [
   {
@@ -106,7 +106,7 @@ export const WORKSPACE_PROFILE_SCHEMA: ProfileSchema = [
   {
     key: "entity_type",
     label: "Entity type",
-    hint: "Used to tailor Saudi-market governance and deployment readiness guidance.",
+    hint: "Used to tailor EU/HOI governance and deployment readiness guidance.",
     kind: "select",
     options: ENTITY_TYPES,
     required: false,
@@ -116,13 +116,13 @@ export const WORKSPACE_PROFILE_SCHEMA: ProfileSchema = [
     label: "Primary regulatory overlays",
     hint: "Select the frameworks most relevant to this workspace.",
     kind: "multiselect",
-    options: KSA_REGULATORY_OVERLAYS,
+    options: REGULATORY_OVERLAYS,
     required: false,
   },
   {
     key: "data_residency_sensitivity",
     label: "Data residency sensitivity",
-    hint: "Used to tune PDPL, NDMO, NCA, and SAMA guidance.",
+    hint: "Used to tune GDPR, ISO 42001, security, and sector regulator guidance.",
     kind: "select",
     options: DATA_RESIDENCY_LEVELS,
     required: false,
@@ -130,7 +130,7 @@ export const WORKSPACE_PROFILE_SCHEMA: ProfileSchema = [
   {
     key: "preferred_language",
     label: "Preferred language",
-    hint: "English is supported now; Arabic/bilingual flows can be enabled later.",
+    hint: "English is supported now; French and multilingual flows can be enabled later.",
     kind: "select",
     options: LANGUAGE_OPTIONS,
     required: false,
@@ -138,7 +138,7 @@ export const WORKSPACE_PROFILE_SCHEMA: ProfileSchema = [
 ] as const;
 
 export const WORKSPACE_PROFILE_DEFAULTS = {
-  country: "Saudi Arabia",
+  country: "EU",
   industry: "",
   activity: "",
   company_size: "11-50",

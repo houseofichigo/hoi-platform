@@ -181,7 +181,7 @@ export const TYPE_SCHEMAS: Record<LibraryType, LibraryTypeSchema> = {
     icon: Scale,
     fields: [
       { key: "jurisdiction", label: "Jurisdiction", kind: "text", required: true, placeholder: "e.g. EU, US, UK, global" },
-      { key: "framework", label: "Framework", kind: "select", options: ["sdaia", "pdpl", "ndmo", "nca_sama", "sama", "saip", "iso_42001"] },
+      { key: "framework", label: "Framework", kind: "select", options: ["eu_ai_act", "gdpr", "iso_42001", "nist", "internal_policy"] },
       { key: "effective_date", label: "Effective date", kind: "date" },
       { key: "summary", label: "Summary", kind: "textarea" },
     ],

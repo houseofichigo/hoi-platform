@@ -127,8 +127,8 @@ function WorkspaceSettings() {
             <p className="eyebrow-muted">Company profile</p>
             <p className="mt-2 text-[14px] text-graphite">
               {isComplete
-                ? "Your company profile is set. Examples, Discover recommendations, and KSA governance guidance use these values."
-                : "Set up your company profile so examples, recommendations, and Saudi-market governance guidance use your real context."}
+                ? "Your company profile is set. Examples, Discover recommendations, and EU governance guidance use these values."
+                : "Set up your company profile so examples, recommendations, and EU/HOI governance guidance use your real context."}
             </p>
           </div>
           <Link

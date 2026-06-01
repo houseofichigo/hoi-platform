@@ -166,7 +166,7 @@ function AssessmentScorePanel({
             {overall == null ? "Create the executive diagnostic snapshot" : `${overall}/100 - ${maturity}`}
           </h2>
           <p className="mt-2 max-w-[68ch] text-[13px] leading-relaxed text-graphite">
-            This snapshot is the backend-owned assessment score used in reports, KSA readiness evidence,
+            This snapshot is the backend-owned assessment score used in reports, EU readiness evidence,
             and downstream Build constraints.
           </p>
         </div>

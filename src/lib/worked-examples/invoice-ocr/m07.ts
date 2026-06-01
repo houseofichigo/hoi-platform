@@ -160,7 +160,7 @@ export const M07_OCR_CONTENT = {
       id: "residency",
       label: "Data residency",
       question: "Where is the data processed and stored, and is that location contractually guaranteed?",
-      productionRisk: "A vendor that 'usually' processes in-region can fail PDPL or sector residency rules.",
+      productionRisk: "A vendor that 'usually' processes in-region can fail GDPR or sector residency rules.",
       evidenceToCollect: "DPA clause + region pinning configuration + sub-processor list.",
     },
     {
@@ -187,9 +187,9 @@ export const M07_OCR_CONTENT = {
     {
       id: "compliance",
       label: "Compliance",
-      question: "Does the vendor hold the certifications our context requires (SOC2, ISO 27001, PDPL, sector-specific)?",
+      question: "Does the vendor hold the certifications our context requires (SOC2, ISO 27001, GDPR, sector-specific)?",
       productionRisk: "Marketing pages list certifications; only signed reports and scoped attestations count.",
-      evidenceToCollect: "Current SOC2 report or ISO 27001 cert + PDPL DPA + sector addendum if applicable.",
+      evidenceToCollect: "Current SOC2 report or ISO 27001 cert + GDPR DPA + sector addendum if applicable.",
     },
     {
       id: "stability",

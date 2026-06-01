@@ -71,7 +71,7 @@ export const M10_OCR_CONTENT = {
 
   step2: {
     title: "System card + operating playbook",
-    why: "The system card is the SDAIA AI governance technical documentation surface: purpose, users, data, risks, oversight. The playbook is what the AP/finance team actually opens on Monday morning.",
+    why: "The system card is the EU AI Act governance technical documentation surface: purpose, users, data, risks, oversight. The playbook is what the AP/finance team actually opens on Monday morning.",
     example:
       "System card: intended purpose, named users, data sources, model/assistant/agent behaviour, oversight, risks, monitoring, change management. Playbook: daily queue check, weekly accuracy review, monthly cost review, incident response.",
     whatToNotice: [
@@ -295,7 +295,7 @@ export const M10_OCR_CONTENT = {
   ] as const satisfies readonly HandoffStage[],
 
   methodNote:
-    "Saudi-market governance expects technical documentation that lets an accountable reviewer reconstruct the system: purpose, data, controls, validation, oversight, monitoring, and PDPL/NDMO posture. The playbook is the operator's mirror of that document - same facts, written for a Monday morning.",
+    "EU/HOI governance expects technical documentation that lets an accountable reviewer reconstruct the system: purpose, data, controls, validation, oversight, monitoring, and GDPR/ISO 42001 posture. The playbook is the operator's mirror of that document - same facts, written for a Monday morning.",
 };
 
 // ── Profile-driven scaffold ────────────────────────────────────────────────

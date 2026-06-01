@@ -277,7 +277,7 @@ export function OnboardingChecklist() {
             {[
               {
                 title: "Assess",
-                body: "Diagnose readiness, maturity, evidence confidence, and KSA governance posture.",
+                body: "Diagnose readiness, maturity, evidence confidence, and EU governance posture.",
               },
               {
                 title: "Discover",

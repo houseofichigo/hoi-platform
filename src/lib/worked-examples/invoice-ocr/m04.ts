@@ -109,7 +109,7 @@ export const M04_OCR_CONTENT = {
       "Indexing decides chunk size and metadata. Access decides who can read which artifact. Retention decides when stale rules are removed. Change decides who can push a new version.",
     whatToNotice: [
       "Weak defaults often look harmless — they fail months later",
-      "Access and retention are PDPL-relevant, not just convenience",
+      "Access and retention are GDPR-relevant, not just convenience",
       "Change management without versioning makes evaluations meaningless",
     ],
     produces: "Four governance choices, one per dimension",
@@ -158,7 +158,7 @@ export const M04_OCR_CONTENT = {
       label: "Knowledge base",
       description: "Assistant-readable evidence: schema, contextual rules, examples, and known limitations.",
       invoiceOcrExample:
-        "KB01 accounting schema, KB02 contextual rules (VAT/PDPL/SDAIA/policy), KB03 mock invoices + answer key.",
+        "KB01 accounting schema, KB02 contextual rules (VAT/GDPR/EU AI Act/policy), KB03 mock invoices + answer key.",
       failureIfMissing:
         "Without a knowledge base, the model invents fields, rules, and amounts — confidently.",
     },
@@ -216,7 +216,7 @@ export const M04_OCR_CONTENT = {
       layer: "Contextual",
       expectedFormat: "Sourced markdown report",
       assistantUse:
-        "Assistant uses this for VAT/PDPL/SDAIA AI governance/internal-policy context when answering rule-sensitive queries.",
+        "Assistant uses this for VAT/GDPR/EU AI Act governance/internal-policy context when answering rule-sensitive queries.",
       qualityChecks: [
         "Every claim carries a date and a source reference",
         "Scope is limited to the workspace's country/regime",
@@ -259,7 +259,7 @@ export const M04_OCR_CONTENT = {
       title: "Access",
       question: "Who can read which artifact, and is read access auditable?",
       whyItMatters:
-        "KB02 includes regulatory and policy claims. Mixing audiences (everyone reads everything) makes scoped advice impossible and complicates PDPL posture.",
+        "KB02 includes regulatory and policy claims. Mixing audiences (everyone reads everything) makes scoped advice impossible and complicates GDPR posture.",
       goodDefault:
         "Role-based access per artifact. Reads are logged with user, artifact id, and timestamp.",
       weakDefault:
@@ -309,11 +309,11 @@ export const M04_OCR_CONTENT = {
       order: 2,
       title: "Contextual rule application",
       queryType: "contextual rule application",
-      purpose: "Confirm the assistant applies a VAT/PDPL/internal-policy rule from KB02 to a concrete case.",
+      purpose: "Confirm the assistant applies a VAT/GDPR/internal-policy rule from KB02 to a concrete case.",
       starterQuery:
-        "We received a SAR 18,000 invoice from a new supplier with a foreign VAT ID. How does VAT, PDPL, and internal approval policy change how we process it?",
+        "We received a EUR 18,000 invoice from a new supplier with a foreign VAT ID. How does VAT, GDPR, and internal approval policy change how we process it?",
       passCriteria: [
-        "Names the applicable rule from each of VAT / PDPL / internal policy",
+        "Names the applicable rule from each of VAT / GDPR / internal policy",
         "Cites KB02 with section and access date",
         "Refuses to give final legal or tax advice — recommends review where required",
       ],
@@ -413,7 +413,7 @@ Cite the artifact name and section on every factual claim.
 Do not invent fields, rules, suppliers, amounts, or sources. If a value is not in the knowledge base, say so and flag it for review.
 Refuse to approve payment, post journal entries, send external communications, or give final legal/tax advice.`,
     knowledgeInstructions: `Use KB01 — Accounting schema for any question about ${accounting} fields, types, required/optional status, or validation rules. Treat unmarked fields as inferred, not confirmed.
-Use KB02 — Contextual rules for VAT, PDPL, SDAIA AI governance, and internal policy in ${country}. Always carry the source date forward.
+Use KB02 — Contextual rules for VAT, GDPR, EU AI Act governance, and internal policy in ${country}. Always carry the source date forward.
 Use KB03 — Mock invoices + answer key for examples and for evaluation. Never present a KB03 invoice as real data — preserve the test_only flag in any output.`,
     retrievalRules: `Pick the artifact whose layer matches the question: schema → KB01, rule/regulation/policy → KB02, example/extraction → KB03.
 Quote or paraphrase the smallest passage that supports the answer and cite "{artifact id} · {section}".
@@ -426,7 +426,7 @@ Refuse to give final legal or tax advice for ${country}; surface the relevant KB
 On any refusal, name the boundary that triggered it.`,
     testPlanSummary: `Five-test evaluation, re-run on every knowledge-base change:
 1. Schema lookup — required fields with types, cited from KB01.
-2. Contextual rule application — VAT/PDPL/policy applied to a concrete case at ${company}, cited from KB02.
+2. Contextual rule application — VAT/GDPR/policy applied to a concrete case at ${company}, cited from KB02.
 3. Mock extraction — V6 JSON from a KB03 invoice, matching the expected_extraction answer key.
 4. Uncertainty / provenance — names unknowns and maps each claim to an artifact + section.
 5. Prompt-injection refusal — embedded instruction from a fake invoice is refused and contained, genuine fields still extracted.`,

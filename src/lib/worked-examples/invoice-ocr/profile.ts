@@ -36,16 +36,16 @@ const SOFTWARE_GROUPS = [
 const INVOICE_VOLUMES = ["<50", "50-200", "200-1000", "1000-5000", "5000+"] as const;
 
 const VAT_PRESETS = [
-  "Saudi Arabia standard 15% only",
-  "Saudi Arabia standard 15% + ZATCA e-invoicing controls",
-  "Saudi Arabia standard 15% + GCC supplier flow",
-  "Saudi Arabia standard 15% + offshore supplier review",
+  "Local standard VAT rate only",
+  "Local standard VAT rate + e-invoicing controls",
+  "Local standard VAT rate + cross-border supplier flow",
+  "Local standard VAT rate + offshore supplier review",
   "VAT-exempt or zero-rated supplier flow",
   "Mixed — multiple rates, exemptions, and regimes",
 ] as const;
 
 const CURRENCIES = [
-  "SAR", "USD", "AED", "QAR", "KWD", "BHD", "OMR", "EUR", "GBP", "CHF",
+  "EUR", "USD", "AED", "QAR", "KWD", "BHD", "OMR", "GBP", "CHF",
   "JPY", "CAD", "AUD", "MAD", "TND", "XOF", "SEK", "DKK", "NOK", "CNY",
   "SGD", "HKD", "Other",
 ] as const;
@@ -121,7 +121,7 @@ export const INVOICE_OCR_PROFILE_DEFAULTS = {
   accounting_software: "Pennylane",
   invoice_volume: "50-200",
   vat_context: "",
-  currencies: ["SAR"],
+  currencies: ["EUR"],
   products: [],
   supplier_categories: [],
 } as const;

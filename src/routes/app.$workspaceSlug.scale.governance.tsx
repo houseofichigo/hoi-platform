@@ -54,37 +54,28 @@ const STATUS_TONE: Record<string, string> = {
 };
 
 const SOURCE_LABEL: Record<string, string> = {
-  sdaia: "SDAIA",
-  pdpl: "PDPL",
-  ndmo: "NDMO",
-  nca_sama: "NCA / SAMA",
-  saip: "SAIP",
+  eu_ai_act: "EU AI Act",
+  gdpr: "GDPR",
   internal_policy: "Internal policy",
 };
 
 const RULE_EXPLANATION: Record<string, string> = {
-  SDAIA_HIGH_IMPACT_AI:
-    "This use case has high-impact AI signals. Confirm risk classification, human accountability, validation, and monitoring before deployment.",
-  SDAIA_TECHNICAL_DOCUMENTATION:
-    "Production deployment requires a technical file covering purpose, data, model behavior, human oversight, monitoring, and change controls.",
-  SDAIA_HUMAN_OVERSIGHT_REQUIRED:
+  EU_AI_ACT_HIGH_RISK:
+    "This use case has high-risk AI signals. Confirm classification, human accountability, validation, monitoring, and conformity obligations before deployment.",
+  ARTICLE_11_DOCUMENTATION:
+    "Production deployment requires technical documentation covering purpose, data, system behavior, human oversight, monitoring, and change controls.",
+  HITL_REQUIRED_ART14:
     "Meaningful human oversight is required. A reviewer must be able to approve, override, pause, or escalate the system output.",
-  SDAIA_TRANSPARENCY_REQUIRED:
-    "Customer- or citizen-facing AI requires clear disclosure, user instructions, and support paths.",
-  SDAIA_MODEL_VALIDATION_REQUIRED:
-    "High-impact AI must have validation evidence before launch, including test cases, accuracy thresholds, and failure handling.",
-  PDPL_PRIVACY_IMPACT_REVIEW:
-    "Personal data and automated processing require privacy review, lawful basis, notice, minimisation, retention, and data-subject handling.",
-  PDPL_DATA_MINIMISATION:
+  TRANSPARENCY_ART13:
+    "Customer- or user-facing AI requires clear disclosure, user instructions, and support paths.",
+  CONFORMITY_ASSESSMENT:
+    "High-risk AI needs conformity assessment evidence before launch, including test cases, thresholds, and failure handling.",
+  DPIA_REQUIRED:
+    "Personal data and automated processing require GDPR privacy review, lawful basis, notice, minimisation, retention, and data-subject handling.",
+  DATA_MINIMISATION:
     "Review the data scope and remove fields that are not necessary for the business purpose.",
-  PDPL_CROSS_BORDER_REVIEW:
-    "Personal data combined with foreign vendor access needs a cross-border transfer and processor review.",
-  NDMO_DATA_GOVERNANCE_REVIEW:
-    "Data classification, ownership, lineage, quality, and access controls need review before scaling.",
-  NCA_SAMA_SECURITY_REVIEW:
-    "Security review is required for sensitive data, external access, financial services, or critical infrastructure exposure.",
-  SAIP_IP_REVIEW:
-    "Review ownership and licensing for prompts, training data, vendor models, generated outputs, and reusable IP.",
+  RIGHT_TO_EXPLANATION:
+    "Automated decisions affecting individuals need a clear explanation, appeal, and human review path.",
   SECURITY_REVIEW_REQUIRED:
     "Internal policy requires a security review when foreign data access or multiple integrations are involved.",
   CHANGE_MANAGEMENT:
@@ -93,7 +84,7 @@ const RULE_EXPLANATION: Record<string, string> = {
 
 const STATUSES = ["open", "in_progress", "resolved", "accepted_risk", "not_applicable"] as const;
 const SEVERITIES = ["hard_stop", "requires_action", "advisory"] as const;
-const SOURCES = ["sdaia", "pdpl", "ndmo", "nca_sama", "saip", "internal_policy"] as const;
+const SOURCES = ["eu_ai_act", "gdpr", "internal_policy"] as const;
 
 const ALLOWED_FLAG_TRANSITIONS: Record<string, string[]> = {
   open: ["in_progress", "resolved", "accepted_risk", "not_applicable"],
@@ -207,7 +198,7 @@ function GovernancePage() {
             Governance <em className="text-terracotta not-italic font-display italic">flags.</em>
           </h2>
           <p className="text-[13px] text-graphite mt-1">
-            Track SDAIA, PDPL, NDMO, NCA/SAMA, SAIP, and operating-policy flags across the deployment roadmap.
+            Track EU AI Act, GDPR, and operating-policy flags across the deployment roadmap.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -683,16 +674,10 @@ function shortDate(iso: string): string {
 
 function reviewerFallback(source: string): string {
   switch (source) {
-    case "pdpl":
+    case "gdpr":
       return "DPO";
-    case "sdaia":
-      return "RAIO / AI governance owner";
-    case "ndmo":
-      return "CDO / Data Governance";
-    case "nca_sama":
-      return "CISO";
-    case "saip":
-      return "Legal";
+    case "eu_ai_act":
+      return "AI governance owner";
     default:
       return "Business owner";
   }
@@ -700,16 +685,10 @@ function reviewerFallback(source: string): string {
 
 function evidenceFallback(source: string): string[] {
   switch (source) {
-    case "pdpl":
-      return ["processing purpose", "privacy impact review", "transfer evidence"];
-    case "sdaia":
+    case "gdpr":
+      return ["processing purpose", "DPIA decision", "data minimisation note"];
+    case "eu_ai_act":
       return ["AI purpose", "oversight design", "validation evidence"];
-    case "ndmo":
-      return ["data owner", "classification", "lineage"];
-    case "nca_sama":
-      return ["security review", "access controls", "incident owner"];
-    case "saip":
-      return ["IP ownership", "licence check", "training-data origin"];
     default:
       return ["owner sign-off", "change record", "rollback path"];
   }

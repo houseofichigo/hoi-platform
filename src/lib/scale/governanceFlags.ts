@@ -1,37 +1,22 @@
-// Pure helper for deriving KSA governance flags from Build score + capture data
+// Pure helper for deriving EU/HOI governance flags from Build score + capture data
 // and roadmap stage transitions. Used by the post-approval flow and by
 // moveRoadmapEntry to seed `governance_flags`.
 // Pure / unit-testable; no Supabase imports.
 
 import type { RoadmapStage } from "./types";
 
-export type GovernanceRuleSource =
-  | "sdaia"
-  | "pdpl"
-  | "ndmo"
-  | "nca_sama"
-  | "saip"
-  | "internal_policy";
+export type GovernanceRuleSource = "eu_ai_act" | "gdpr" | "internal_policy";
 export type GovernanceSeverity = "hard_stop" | "requires_action" | "advisory";
 
 export type GovernanceRuleCode =
-  // SDAIA / AI ethics and deployment controls
-  | "SDAIA_HIGH_IMPACT_AI"
-  | "SDAIA_HUMAN_OVERSIGHT_REQUIRED"
-  | "SDAIA_TRANSPARENCY_REQUIRED"
-  | "SDAIA_TECHNICAL_DOCUMENTATION"
-  | "SDAIA_MODEL_VALIDATION_REQUIRED"
-  // PDPL
-  | "PDPL_PRIVACY_IMPACT_REVIEW"
-  | "PDPL_DATA_MINIMISATION"
-  | "PDPL_CROSS_BORDER_REVIEW"
-  // NDMO
-  | "NDMO_DATA_GOVERNANCE_REVIEW"
-  // NCA / SAMA
-  | "NCA_SAMA_SECURITY_REVIEW"
-  // SAIP
-  | "SAIP_IP_REVIEW"
-  // Internal policy
+  | "EU_AI_ACT_HIGH_RISK"
+  | "ARTICLE_11_DOCUMENTATION"
+  | "HITL_REQUIRED_ART14"
+  | "TRANSPARENCY_ART13"
+  | "CONFORMITY_ASSESSMENT"
+  | "DPIA_REQUIRED"
+  | "DATA_MINIMISATION"
+  | "RIGHT_TO_EXPLANATION"
   | "SECURITY_REVIEW_REQUIRED"
   | "CHANGE_MANAGEMENT";
 
@@ -48,8 +33,8 @@ export interface DeriveInput {
   capture: Record<string, unknown>;
   /**
    * Optional roadmap stage context. When provided, stage-driven rules
-   * (SDAIA_TECHNICAL_DOCUMENTATION on reaching production, CHANGE_MANAGEMENT on
-   * Pilot → Production) will be included.
+   * (Article 11 documentation on reaching production, CHANGE_MANAGEMENT on
+   * Pilot -> Production) will be included.
    */
   stage?: RoadmapStage;
   fromStage?: RoadmapStage | null;
@@ -69,10 +54,6 @@ function isYes(v: unknown): boolean {
   return x === "yes" || x === "true";
 }
 
-// ---------------------------------------------------------------------------
-// Structured signal extractors. The "structured" requirement means the answer
-// must come from a known capture key, not an inferred substring of free text.
-// ---------------------------------------------------------------------------
 function isCustomerFacing(cap: Record<string, unknown>): boolean {
   if (isYes(cap.customer_facing_choice)) return true;
   return s(cap.target_domain) === "customer_facing";
@@ -84,15 +65,14 @@ function automatedDecisionsAffectIndividuals(
   hasPersonal: boolean,
 ): boolean {
   if (isYes(cap.automated_decisions_affect_individuals_choice)) return true;
-  // Fallback inference: model-based / agentic decisions on personal data.
   const isAutomatedDecision =
-    decisionLogic === "model_based" || decisionLogic === "agentic";
+    decisionLogic === "model_based" ||
+    decisionLogic === "rules_plus_model" ||
+    decisionLogic === "agentic" ||
+    decisionLogic === "mixed";
   return hasPersonal && isAutomatedDecision;
 }
 
-// ---------------------------------------------------------------------------
-// Main entry point
-// ---------------------------------------------------------------------------
 export function deriveGovernanceFlags(input: DeriveInput): DerivedGovernanceFlag[] {
   const flags: DerivedGovernanceFlag[] = [];
   const codes = new Set(input.reasonCodes ?? []);
@@ -101,7 +81,6 @@ export function deriveGovernanceFlags(input: DeriveInput): DerivedGovernanceFlag
   const stage = input.stage;
   const fromStage = input.fromStage ?? null;
 
-  // Shared computed signals
   const personal = s(cap.personal_data) || s(cap.personal_data_choice);
   const hasPersonal =
     cap.personal_data === true ||
@@ -121,15 +100,10 @@ export function deriveGovernanceFlags(input: DeriveInput): DerivedGovernanceFlag
 
   const scopeChips = arr(cap.scope_chips);
   const broadProcessing = scopeChips.length >= 4 || s(cap.data_scope) === "broad";
-
   const customerFacing = isCustomerFacing(cap);
-  const adAffectIndividuals = automatedDecisionsAffectIndividuals(
-    cap,
-    decisionLogic,
-    hasPersonal,
-  );
+  const affectsIndividuals = automatedDecisionsAffectIndividuals(cap, decisionLogic, hasPersonal);
 
-  const highRiskFn = fn === "finance" || fn === "hr" || fn === "legal";
+  const highRiskFunction = fn === "finance" || fn === "hr" || fn === "legal";
   const impact =
     s(cap.impact) ||
     s(cap.business_impact) ||
@@ -144,63 +118,51 @@ export function deriveGovernanceFlags(input: DeriveInput): DerivedGovernanceFlag
     impact === "irreversible" ||
     codes.has("IRREVERSIBLE_ERRORS");
 
-  // -------------------------------------------------------------------------
-  // SDAIA / high-impact AI deployment controls
-  // -------------------------------------------------------------------------
-
-  // SDAIA_HIGH_IMPACT_AI
-  let highImpactSeverity: GovernanceSeverity | null = null;
-  if (highRiskFn && materialImpact) {
-    highImpactSeverity = "hard_stop";
+  let highRiskSeverity: GovernanceSeverity | null = null;
+  if (highRiskFunction && materialImpact) {
+    highRiskSeverity = "hard_stop";
     flags.push({
-      rule_code: "SDAIA_HIGH_IMPACT_AI",
-      rule_source: "sdaia",
+      rule_code: "EU_AI_ACT_HIGH_RISK",
+      rule_source: "eu_ai_act",
       severity: "hard_stop",
       metadata: { function: fn, impact: impact || "inferred_from_reason_codes" },
     });
-  } else if (highRiskFn || materialImpact) {
-    highImpactSeverity = "requires_action";
+  } else if (highRiskFunction || materialImpact) {
+    highRiskSeverity = "requires_action";
     flags.push({
-      rule_code: "SDAIA_HIGH_IMPACT_AI",
-      rule_source: "sdaia",
+      rule_code: "EU_AI_ACT_HIGH_RISK",
+      rule_source: "eu_ai_act",
       severity: "requires_action",
-      metadata: {
-        function: fn || null,
-        impact: impact || null,
-        partial_match: true,
-      },
+      metadata: { function: fn || null, impact: impact || null, partial_match: true },
     });
   }
 
-  // SDAIA_MODEL_VALIDATION_REQUIRED - high-impact AI requires validation before deployment.
-  if (highImpactSeverity === "hard_stop") {
+  if (highRiskSeverity === "hard_stop") {
     flags.push({
-      rule_code: "SDAIA_MODEL_VALIDATION_REQUIRED",
-      rule_source: "sdaia",
+      rule_code: "CONFORMITY_ASSESSMENT",
+      rule_source: "eu_ai_act",
       severity: "requires_action",
       metadata: {
-        trigger: "SDAIA_HIGH_IMPACT_AI=hard_stop",
+        trigger: "EU_AI_ACT_HIGH_RISK=hard_stop",
         function: fn,
         impact: impact || null,
       },
     });
   }
 
-  // SDAIA_HUMAN_OVERSIGHT_REQUIRED
   if (codes.has("HITL_MANDATORY") || s(cap.hitl_decisions) === "mandatory") {
     flags.push({
-      rule_code: "SDAIA_HUMAN_OVERSIGHT_REQUIRED",
-      rule_source: "sdaia",
+      rule_code: "HITL_REQUIRED_ART14",
+      rule_source: "eu_ai_act",
       severity: "requires_action",
       metadata: { trigger: "hitl_mandatory" },
     });
   }
 
-  // SDAIA_TRANSPARENCY_REQUIRED - structured customer-facing signal.
   if (customerFacing) {
     flags.push({
-      rule_code: "SDAIA_TRANSPARENCY_REQUIRED",
-      rule_source: "sdaia",
+      rule_code: "TRANSPARENCY_ART13",
+      rule_source: "eu_ai_act",
       severity: "requires_action",
       metadata: {
         customer_facing: true,
@@ -211,25 +173,19 @@ export function deriveGovernanceFlags(input: DeriveInput): DerivedGovernanceFlag
     });
   }
 
-  // SDAIA_TECHNICAL_DOCUMENTATION - required once the use case reaches production.
   if (stage === "production") {
     flags.push({
-      rule_code: "SDAIA_TECHNICAL_DOCUMENTATION",
-      rule_source: "sdaia",
+      rule_code: "ARTICLE_11_DOCUMENTATION",
+      rule_source: "eu_ai_act",
       severity: "requires_action",
       metadata: { trigger: "stage_reached_production", from_stage: fromStage },
     });
   }
 
-  // -------------------------------------------------------------------------
-  // PDPL
-  // -------------------------------------------------------------------------
-
-  // PDPL_PRIVACY_IMPACT_REVIEW - personal data + automated decisions or broad processing.
   if (hasPersonal && (automatedDecisions || broadProcessing)) {
     flags.push({
-      rule_code: "PDPL_PRIVACY_IMPACT_REVIEW",
-      rule_source: "pdpl",
+      rule_code: "DPIA_REQUIRED",
+      rule_source: "gdpr",
       severity: "requires_action",
       metadata: {
         personal_data: hasPersonal,
@@ -239,21 +195,22 @@ export function deriveGovernanceFlags(input: DeriveInput): DerivedGovernanceFlag
     });
   }
 
-  // PDPL_DATA_MINIMISATION - advisory when scope appears broad.
-  if (broadProcessing) {
+  if (broadProcessing || classification === "restricted" || classification === "confidential") {
     flags.push({
-      rule_code: "PDPL_DATA_MINIMISATION",
-      rule_source: "pdpl",
-      severity: "advisory",
-      metadata: { scope_chip_count: scopeChips.length },
+      rule_code: "DATA_MINIMISATION",
+      rule_source: "gdpr",
+      severity: broadProcessing ? "advisory" : "requires_action",
+      metadata: {
+        scope_chip_count: scopeChips.length,
+        classification: classification || null,
+      },
     });
   }
 
-  // PDPL notice/review duty for automated decisions affecting individuals.
-  if (adAffectIndividuals) {
+  if (affectsIndividuals) {
     flags.push({
-      rule_code: "PDPL_PRIVACY_IMPACT_REVIEW",
-      rule_source: "pdpl",
+      rule_code: "RIGHT_TO_EXPLANATION",
+      rule_source: "gdpr",
       severity: "requires_action",
       metadata: {
         signal_source: isYes(cap.automated_decisions_affect_individuals_choice)
@@ -265,48 +222,17 @@ export function deriveGovernanceFlags(input: DeriveInput): DerivedGovernanceFlag
     });
   }
 
-  // PDPL_CROSS_BORDER_REVIEW - personal data plus external/foreign vendor access.
   const foreignVendor = s(cap.foreign_vendor) || s(cap.foreign_vendor_choice);
   const hasForeign =
     cap.foreign_vendor_access === true ||
     (foreignVendor !== "" && foreignVendor !== "none" && foreignVendor !== "no") ||
     codes.has("FOREIGN_DATA_ACCESS");
-  if (hasPersonal && hasForeign) {
-    flags.push({
-      rule_code: "PDPL_CROSS_BORDER_REVIEW",
-      rule_source: "pdpl",
-      severity: "requires_action",
-      metadata: { personal_data: true, foreign_vendor: true },
-    });
-  }
-
-  // -------------------------------------------------------------------------
-  // NDMO / data governance
-  // -------------------------------------------------------------------------
-
-  if (classification === "confidential" || classification === "restricted" || broadProcessing) {
-    flags.push({
-      rule_code: "NDMO_DATA_GOVERNANCE_REVIEW",
-      rule_source: "ndmo",
-      severity: classification === "restricted" ? "requires_action" : "advisory",
-      metadata: {
-        classification: classification || null,
-        broad_processing: broadProcessing,
-      },
-    });
-  }
-
-  // -------------------------------------------------------------------------
-  // NCA / SAMA / SAIP / internal policy
-  // -------------------------------------------------------------------------
-
-  const integrations =
-    arr(cap.integrations_chips).length || (n(cap.integration_count) ?? 0);
+  const integrations = arr(cap.integrations_chips).length || (n(cap.integration_count) ?? 0);
 
   if (hasForeign || integrations >= 3 || classification === "restricted") {
     flags.push({
-      rule_code: "NCA_SAMA_SECURITY_REVIEW",
-      rule_source: "nca_sama",
+      rule_code: "SECURITY_REVIEW_REQUIRED",
+      rule_source: "internal_policy",
       severity: hasForeign || classification === "restricted" ? "requires_action" : "advisory",
       metadata: {
         foreign_vendor: hasForeign || null,
@@ -316,36 +242,6 @@ export function deriveGovernanceFlags(input: DeriveInput): DerivedGovernanceFlag
     });
   }
 
-  if (
-    s(cap.vendor_model_reuse) === "yes" ||
-    s(cap.training_data_origin) === "third_party" ||
-    codes.has("THIRD_PARTY_IP")
-  ) {
-    flags.push({
-      rule_code: "SAIP_IP_REVIEW",
-      rule_source: "saip",
-      severity: "advisory",
-      metadata: {
-        vendor_model_reuse: s(cap.vendor_model_reuse) || null,
-        training_data_origin: s(cap.training_data_origin) || null,
-      },
-    });
-  }
-
-  // SECURITY_REVIEW_REQUIRED - internal review mirror for security-sensitive cases.
-  if (hasForeign || integrations >= 3) {
-    flags.push({
-      rule_code: "SECURITY_REVIEW_REQUIRED",
-      rule_source: "internal_policy",
-      severity: "requires_action",
-      metadata: {
-        foreign_vendor: hasForeign || null,
-        integration_count: integrations,
-      },
-    });
-  }
-
-  // CHANGE_MANAGEMENT — created on Pilot → Production.
   if (fromStage === "pilot" && stage === "production") {
     flags.push({
       rule_code: "CHANGE_MANAGEMENT",

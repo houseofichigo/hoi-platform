@@ -227,15 +227,15 @@ function recommendForProfile(
         .toLowerCase();
       const matchedSignals = signals.filter((signal) => haystack.includes(signal));
       const signalScore = matchedSignals.length * 2;
-      const ksaScore = ["sdaia", "pdpl", "ndmo", "nca", "sama", "saip", "saudi", "ksa"].reduce(
+      const governanceScore = ["eu ai act", "gdpr", "iso 42001", "nist", "security", "governance"].reduce(
         (score, signal) => score + (haystack.includes(signal) ? 1 : 0),
         0,
       );
       const reason =
         matchedSignals.length > 0
           ? `Recommended because it matches ${matchedSignals.slice(0, 3).join(", ")}.`
-          : "Recommended because it carries Saudi-market governance relevance.";
-      return { item, score: signalScore + ksaScore, reason };
+          : "Recommended because it carries EU/HOI governance relevance.";
+      return { item, score: signalScore + governanceScore, reason };
     })
     .filter((row) => row.score > 0)
     .sort((a, b) => b.score - a.score || b.item.created_at.localeCompare(a.item.created_at))
