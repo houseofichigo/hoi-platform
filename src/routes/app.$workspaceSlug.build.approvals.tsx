@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Check, X } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useApprovals } from "@/hooks/useBuild";
+import { decideBuildApproval } from "@/lib/build/approvals.functions";
 
 export const Route = createFileRoute("/app/$workspaceSlug/build/approvals")({
   component: ApprovalsPage,
@@ -14,30 +14,23 @@ export const Route = createFileRoute("/app/$workspaceSlug/build/approvals")({
 
 function useReviewApproval() {
   const qc = useQueryClient();
-  const { user } = useAuth();
   const { workspace } = useWorkspace();
+  const decideApproval = useServerFn(decideBuildApproval);
   return useMutation({
     mutationFn: async (input: { approvalId: string; useCaseId: string; decision: "approved" | "rejected"; comment: string }) => {
-      if (!user) throw new Error("Not authenticated");
-      const { error } = await supabase
-        .from("use_case_approvals")
-        .update({
-          decision: input.decision,
-          comment: input.comment || null,
-          reviewed_by: user.id,
-          reviewed_at: new Date().toISOString(),
-        })
-        .eq("id", input.approvalId);
-      if (error) throw error;
-      const { error: ucErr } = await supabase
-        .from("use_cases")
-        .update({ status: input.decision })
-        .eq("id", input.useCaseId);
-      if (ucErr) throw ucErr;
+      return decideApproval({ data: input });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["use_case_approvals_all", workspace?.id] });
       qc.invalidateQueries({ queryKey: ["use_cases", workspace?.id] });
+      qc.invalidateQueries({ queryKey: ["scale", "roadmap_entries", workspace?.id] });
+      qc.invalidateQueries({ queryKey: ["scale", "governance_flags_full", workspace?.id] });
+      qc.invalidateQueries({ queryKey: ["scale", "governance_flags_summary", workspace?.id] });
+      qc.invalidateQueries({ queryKey: ["scale", "audit_month_count", workspace?.id] });
+      qc.invalidateQueries({ queryKey: ["resume", workspace?.id] });
+      qc.invalidateQueries({ queryKey: ["team-status", workspace?.id] });
+      qc.invalidateQueries({ queryKey: ["attention", workspace?.id] });
+      qc.invalidateQueries({ queryKey: ["activity", workspace?.id] });
     },
   });
 }
@@ -55,7 +48,7 @@ function ApprovalsPage() {
         decision,
         comment: comments[a.id] ?? "",
       });
-      toast.success(`Marked ${decision}`);
+      toast.success(decision === "approved" ? "Approved and governance checked" : "Marked rejected");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Update failed");
     }

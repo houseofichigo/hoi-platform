@@ -86,6 +86,60 @@ async function persistDerivedFlags(
 
 const Input = z.object({ useCaseId: z.string().uuid() });
 
+export async function deriveAndPersistGovernanceFlagsForUseCase(args: {
+  useCaseId: string;
+  actorId: string;
+  source?: string;
+}) {
+  const { data: uc, error: ucErr } = await supabaseAdmin
+    .from("use_cases")
+    .select("id, workspace_id, function, name, workspaces(slug)")
+    .eq("id", args.useCaseId)
+    .single();
+  if (ucErr || !uc) throw new Error(ucErr?.message ?? "Use case not found");
+
+  const [{ data: score }, { data: captures }] = await Promise.all([
+    supabaseAdmin
+      .from("use_case_scores")
+      .select("reason_codes")
+      .eq("use_case_id", uc.id)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabaseAdmin
+      .from("use_case_captures")
+      .select("responses")
+      .eq("use_case_id", uc.id),
+  ]);
+
+  const mergedCapture: Record<string, unknown> = {};
+  for (const c of captures ?? []) {
+    Object.assign(mergedCapture, (c.responses ?? {}) as Record<string, unknown>);
+  }
+
+  const { data: entry } = await supabaseAdmin
+    .from("roadmap_entries")
+    .select("id")
+    .eq("use_case_id", uc.id)
+    .maybeSingle();
+
+  const derived = deriveGovernanceFlags({
+    useCaseFunction: uc.function,
+    reasonCodes: (score?.reason_codes ?? []) as string[],
+    capture: mergedCapture,
+  });
+
+  return persistDerivedFlags(derived, {
+    workspaceId: uc.workspace_id,
+    workspaceSlug: uc.workspaces?.slug ?? "",
+    useCaseId: uc.id,
+    useCaseName: uc.name,
+    actorId: args.actorId,
+    roadmapEntryId: entry?.id ?? null,
+    source: args.source ?? "build_approval",
+  });
+}
+
 /**
  * Derive and upsert governance flags for an approved use case.
  * Idempotent via UNIQUE(use_case_id, rule_code). Also writes audit_log entries
@@ -96,53 +150,9 @@ export const generateGovernanceFlagsForUseCase = createServerFn({ method: "POST"
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => Input.parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-
-    const { data: uc, error: ucErr } = await supabase
-      .from("use_cases")
-      .select("id, workspace_id, function, name, workspaces(slug)")
-      .eq("id", data.useCaseId)
-      .single();
-    if (ucErr || !uc) throw new Error(ucErr?.message ?? "Use case not found");
-
-    const [{ data: score }, { data: captures }] = await Promise.all([
-      supabase
-        .from("use_case_scores")
-        .select("reason_codes")
-        .eq("use_case_id", uc.id)
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from("use_case_captures")
-        .select("responses")
-        .eq("use_case_id", uc.id),
-    ]);
-
-    const mergedCapture: Record<string, unknown> = {};
-    for (const c of captures ?? []) {
-      Object.assign(mergedCapture, (c.responses ?? {}) as Record<string, unknown>);
-    }
-
-    const { data: entry } = await supabase
-      .from("roadmap_entries")
-      .select("id")
-      .eq("use_case_id", uc.id)
-      .maybeSingle();
-
-    const derived = deriveGovernanceFlags({
-      useCaseFunction: uc.function,
-      reasonCodes: (score?.reason_codes ?? []) as string[],
-      capture: mergedCapture,
-    });
-
-    return persistDerivedFlags(derived, {
-      workspaceId: uc.workspace_id,
-      workspaceSlug: uc.workspaces?.slug ?? "",
-      useCaseId: uc.id,
-      useCaseName: uc.name,
-      actorId: userId,
-      roadmapEntryId: entry?.id ?? null,
+    return deriveAndPersistGovernanceFlagsForUseCase({
+      useCaseId: data.useCaseId,
+      actorId: context.userId,
       source: "build_approval",
     });
   });

@@ -20,15 +20,21 @@ const WIZARD_SCHEMA = "src/lib/build/wizard-schema.ts";
 const DASHBOARD_BUCKETS = "src/lib/build/dashboardBuckets.ts";
 const SCORE_PATH = "src/lib/scoring.functions.ts";
 const CAPTURE_ROUTE = "src/routes/app.$workspaceSlug.build.capture.$useCaseId.tsx";
+const APPROVALS_ROUTE = "src/routes/app.$workspaceSlug.build.approvals.tsx";
 const DASHBOARD_ROUTE = "src/routes/app.$workspaceSlug.build.dashboard.tsx";
 const BUILD_INDEX_ROUTE = "src/routes/app.$workspaceSlug.build.index.tsx";
 const SCALE_QUERIES = "src/lib/scale/queries.ts";
+const APPROVALS_FUNCTION = "src/lib/build/approvals.functions.ts";
+const SCALE_FUNCTIONS = "src/lib/scale/scale.functions.ts";
 
 const REQUIRED_FILES = [
   WIZARD_SCHEMA,
   DASHBOARD_BUCKETS,
   SCORE_PATH,
   CAPTURE_ROUTE,
+  APPROVALS_ROUTE,
+  APPROVALS_FUNCTION,
+  SCALE_FUNCTIONS,
   DASHBOARD_ROUTE,
   BUILD_INDEX_ROUTE,
 ];
@@ -45,6 +51,9 @@ if (errors.length > 0) {
 const wizardSrc = read(WIZARD_SCHEMA);
 const scoreSrc = stripComments(read(SCORE_PATH));
 const captureSrc = stripComments(read(CAPTURE_ROUTE));
+const approvalsRouteSrc = stripComments(read(APPROVALS_ROUTE));
+const approvalsFunctionSrc = stripComments(read(APPROVALS_FUNCTION));
+const scaleFunctionsSrc = stripComments(read(SCALE_FUNCTIONS));
 const dashboardSrc = stripComments(read(DASHBOARD_ROUTE));
 const buildIndexSrc = stripComments(read(BUILD_INDEX_ROUTE));
 const scaleSrc = exists(SCALE_QUERIES) ? stripComments(read(SCALE_QUERIES)) : "";
@@ -59,6 +68,9 @@ if (!/@\/lib\/build\/wizard-schema/.test(captureSrc)) {
 }
 if (!/scoreUseCase/.test(captureSrc)) {
   errors.push(`${CAPTURE_ROUTE} must call scoreUseCase before approval submission`);
+}
+if (!/isFieldFilled/.test(captureSrc)) {
+  errors.push(`${CAPTURE_ROUTE} must use wizard-schema isFieldFilled for UI validation`);
 }
 
 // Wizard exports + four-step contract.
@@ -106,6 +118,9 @@ for (const key of REQUIRED_SCORING_KEYS) {
     errors.push(`${WIZARD_SCHEMA} missing scoring key "${key}"`);
   }
 }
+if (!/field\.kind\s*===\s*["']repeater["'][\s\S]{0,900}nonEmptyRows[\s\S]{0,900}cols\.every/.test(wizardSrc)) {
+  errors.push(`${WIZARD_SCHEMA} repeater validation must require complete non-empty rows`);
+}
 
 // Scoring persistence: V2 columns + derived score snapshot.
 const REQUIRED_V2_FIELDS = [
@@ -130,6 +145,20 @@ if (!/from\(\s*["']use_case_scores["']\s*\)[\s\S]{0,120}\.upsert\(/.test(scoreSr
 }
 if (!/derived_scores\s*:/.test(scoreSrc)) {
   errors.push(`${SCORE_PATH} must populate use_cases.derived_scores`);
+}
+
+// Build approval must stay server-owned and seed Scale governance flags.
+if (!/decideBuildApproval/.test(approvalsRouteSrc)) {
+  errors.push(`${APPROVALS_ROUTE} must call decideBuildApproval`);
+}
+if (/from\(\s*["']use_case_approvals["']\s*\)[\s\S]{0,120}\.update\(/.test(approvalsRouteSrc)) {
+  errors.push(`${APPROVALS_ROUTE} must not update use_case_approvals directly`);
+}
+if (!/deriveAndPersistGovernanceFlagsForUseCase/.test(approvalsFunctionSrc)) {
+  errors.push(`${APPROVALS_FUNCTION} must generate governance flags on approval`);
+}
+if (!/export\s+async\s+function\s+deriveAndPersistGovernanceFlagsForUseCase/.test(scaleFunctionsSrc)) {
+  errors.push(`${SCALE_FUNCTIONS} must export deriveAndPersistGovernanceFlagsForUseCase`);
 }
 
 // Dashboard/index should use quadrant/classification correctly.

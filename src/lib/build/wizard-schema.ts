@@ -644,13 +644,47 @@ export function isFieldFilled(field: FieldDef, value: unknown): boolean {
     return typeof value === "string" && value.trim().length > 0;
   }
   if (field.kind === "repeater") {
-    return Array.isArray(value) && value.some((row) => {
+    if (!Array.isArray(value)) return false;
+    const rows = value.filter((row) => row && typeof row === "object") as Record<string, unknown>[];
+    const cols = field.columns ?? [];
+    const nonEmptyRows = rows.filter((row) => {
+      const entries = Object.values(row);
+      return entries.some((v) => typeof v === "string" && v.trim().length > 0);
+    });
+    if (nonEmptyRows.length === 0) return false;
+
+    return nonEmptyRows.every((row) => {
+      if (cols.length === 0) {
+        return Object.values(row).some((v) => typeof v === "string" && v.trim().length > 0);
+      }
+      return cols.every((col) => {
+        const cell = row[col.key];
+        return typeof cell === "string" && cell.trim().length > 0;
+      });
+    });
+  }
+  if (field.kind === "checkbox-grid") {
+    if (!Array.isArray(value)) return false;
+    const count = value.length;
+    if (field.minSelect != null && count < field.minSelect) return false;
+    if (field.maxSelect != null && count > field.maxSelect) return false;
+    return count > 0;
+  }
+  if (field.kind === "accordion-checkboxes") {
+    if (!Array.isArray(value)) return false;
+    if (field.noneOption && value.includes(field.noneOption.key)) return true;
+    return value.length > 0;
+  }
+  if (field.kind === "chips") {
+    return Array.isArray(value) && value.length > 0;
+  }
+  if (Array.isArray(value)) {
+    return value.some((row) => {
       if (!row || typeof row !== "object") return false;
       const entries = Object.values(row as Record<string, unknown>);
       return entries.some((v) => typeof v === "string" && v.trim().length > 0);
     });
   }
-  if (Array.isArray(value)) return value.length > 0;
   return false;
 }
 

@@ -388,7 +388,11 @@ export function useSubmitUseCase() {
     mutationFn: async (useCaseId: string) => {
       if (!user) throw new Error("Not authenticated");
       // Update lifecycle + create pending approval
-      await supabase.from("use_cases").update({ status: "submitted" }).eq("id", useCaseId);
+      const { error: statusError } = await supabase
+        .from("use_cases")
+        .update({ status: "submitted" })
+        .eq("id", useCaseId);
+      if (statusError) throw statusError;
       const { data, error } = await supabase
         .from("use_case_approvals")
         .upsert(

@@ -13,6 +13,7 @@ import {
 import { scoreUseCase } from "@/lib/scoring.functions";
 import {
   STEPS,
+  isFieldFilled,
   validateStep,
   type FieldDef,
   type StepDef,
@@ -358,7 +359,7 @@ function FieldRenderer({
   onChange: (v: unknown) => void;
   showError: boolean;
 }) {
-  const invalid = showError && field.required && !isFilled(field, value);
+  const invalid = showError && field.required && !isFieldFilled(field, value);
 
   return (
     <div>
@@ -377,18 +378,6 @@ function FieldRenderer({
       )}
     </div>
   );
-}
-
-function isFilled(field: FieldDef, value: unknown): boolean {
-  // mirrors wizard-schema.isFieldFilled without import cycle
-  if (field.kind === "text" || field.kind === "textarea") {
-    return typeof value === "string" && value.trim().length > 0;
-  }
-  if (field.kind === "radio" || field.kind === "radio-cards") {
-    return typeof value === "string" && value.length > 0;
-  }
-  if (Array.isArray(value)) return value.length > 0;
-  return false;
 }
 
 function renderInput(field: FieldDef, value: unknown, onChange: (v: unknown) => void) {
