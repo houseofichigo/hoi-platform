@@ -40,6 +40,7 @@ import { Route as AppWorkspaceSlugDiscoverIndexRouteImport } from './routes/app.
 import { Route as AppWorkspaceSlugBuildIndexRouteImport } from './routes/app.$workspaceSlug.build.index'
 import { Route as AppWorkspaceSlugAssessIndexRouteImport } from './routes/app.$workspaceSlug.assess.index'
 import { Route as AppWorkspaceSlugScaleRoadmapRouteImport } from './routes/app.$workspaceSlug.scale.roadmap'
+import { Route as AppWorkspaceSlugScaleReviewsRouteImport } from './routes/app.$workspaceSlug.scale.reviews'
 import { Route as AppWorkspaceSlugScaleGovernanceRouteImport } from './routes/app.$workspaceSlug.scale.governance'
 import { Route as AppWorkspaceSlugScaleAuditRouteImport } from './routes/app.$workspaceSlug.scale.audit'
 import { Route as AppWorkspaceSlugOnboardingWorkspaceProfileRouteImport } from './routes/app.$workspaceSlug.onboarding.workspace-profile'
@@ -222,6 +223,12 @@ const AppWorkspaceSlugScaleRoadmapRoute =
     path: '/roadmap',
     getParentRoute: () => AppWorkspaceSlugScaleRoute,
   } as any)
+const AppWorkspaceSlugScaleReviewsRoute =
+  AppWorkspaceSlugScaleReviewsRouteImport.update({
+    id: '/reviews',
+    path: '/reviews',
+    getParentRoute: () => AppWorkspaceSlugScaleRoute,
+  } as any)
 const AppWorkspaceSlugScaleGovernanceRoute =
   AppWorkspaceSlugScaleGovernanceRouteImport.update({
     id: '/governance',
@@ -369,6 +376,7 @@ export interface FileRoutesByFullPath {
   '/app/$workspaceSlug/onboarding/workspace-profile': typeof AppWorkspaceSlugOnboardingWorkspaceProfileRoute
   '/app/$workspaceSlug/scale/audit': typeof AppWorkspaceSlugScaleAuditRoute
   '/app/$workspaceSlug/scale/governance': typeof AppWorkspaceSlugScaleGovernanceRoute
+  '/app/$workspaceSlug/scale/reviews': typeof AppWorkspaceSlugScaleReviewsRoute
   '/app/$workspaceSlug/scale/roadmap': typeof AppWorkspaceSlugScaleRoadmapRoute
   '/app/$workspaceSlug/assess/': typeof AppWorkspaceSlugAssessIndexRoute
   '/app/$workspaceSlug/build/': typeof AppWorkspaceSlugBuildIndexRoute
@@ -414,6 +422,7 @@ export interface FileRoutesByTo {
   '/app/$workspaceSlug/onboarding/workspace-profile': typeof AppWorkspaceSlugOnboardingWorkspaceProfileRoute
   '/app/$workspaceSlug/scale/audit': typeof AppWorkspaceSlugScaleAuditRoute
   '/app/$workspaceSlug/scale/governance': typeof AppWorkspaceSlugScaleGovernanceRoute
+  '/app/$workspaceSlug/scale/reviews': typeof AppWorkspaceSlugScaleReviewsRoute
   '/app/$workspaceSlug/scale/roadmap': typeof AppWorkspaceSlugScaleRoadmapRoute
   '/app/$workspaceSlug/assess': typeof AppWorkspaceSlugAssessIndexRoute
   '/app/$workspaceSlug/build': typeof AppWorkspaceSlugBuildIndexRoute
@@ -466,6 +475,7 @@ export interface FileRoutesById {
   '/app/$workspaceSlug/onboarding/workspace-profile': typeof AppWorkspaceSlugOnboardingWorkspaceProfileRoute
   '/app/$workspaceSlug/scale/audit': typeof AppWorkspaceSlugScaleAuditRoute
   '/app/$workspaceSlug/scale/governance': typeof AppWorkspaceSlugScaleGovernanceRoute
+  '/app/$workspaceSlug/scale/reviews': typeof AppWorkspaceSlugScaleReviewsRoute
   '/app/$workspaceSlug/scale/roadmap': typeof AppWorkspaceSlugScaleRoadmapRoute
   '/app/$workspaceSlug/assess/': typeof AppWorkspaceSlugAssessIndexRoute
   '/app/$workspaceSlug/build/': typeof AppWorkspaceSlugBuildIndexRoute
@@ -519,6 +529,7 @@ export interface FileRouteTypes {
     | '/app/$workspaceSlug/onboarding/workspace-profile'
     | '/app/$workspaceSlug/scale/audit'
     | '/app/$workspaceSlug/scale/governance'
+    | '/app/$workspaceSlug/scale/reviews'
     | '/app/$workspaceSlug/scale/roadmap'
     | '/app/$workspaceSlug/assess/'
     | '/app/$workspaceSlug/build/'
@@ -564,6 +575,7 @@ export interface FileRouteTypes {
     | '/app/$workspaceSlug/onboarding/workspace-profile'
     | '/app/$workspaceSlug/scale/audit'
     | '/app/$workspaceSlug/scale/governance'
+    | '/app/$workspaceSlug/scale/reviews'
     | '/app/$workspaceSlug/scale/roadmap'
     | '/app/$workspaceSlug/assess'
     | '/app/$workspaceSlug/build'
@@ -615,6 +627,7 @@ export interface FileRouteTypes {
     | '/app/$workspaceSlug/onboarding/workspace-profile'
     | '/app/$workspaceSlug/scale/audit'
     | '/app/$workspaceSlug/scale/governance'
+    | '/app/$workspaceSlug/scale/reviews'
     | '/app/$workspaceSlug/scale/roadmap'
     | '/app/$workspaceSlug/assess/'
     | '/app/$workspaceSlug/build/'
@@ -868,6 +881,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppWorkspaceSlugScaleRoadmapRouteImport
       parentRoute: typeof AppWorkspaceSlugScaleRoute
     }
+    '/app/$workspaceSlug/scale/reviews': {
+      id: '/app/$workspaceSlug/scale/reviews'
+      path: '/reviews'
+      fullPath: '/app/$workspaceSlug/scale/reviews'
+      preLoaderRoute: typeof AppWorkspaceSlugScaleReviewsRouteImport
+      parentRoute: typeof AppWorkspaceSlugScaleRoute
+    }
     '/app/$workspaceSlug/scale/governance': {
       id: '/app/$workspaceSlug/scale/governance'
       path: '/governance'
@@ -1041,6 +1061,7 @@ const AppWorkspaceSlugDiscoverRouteWithChildren =
 interface AppWorkspaceSlugScaleRouteChildren {
   AppWorkspaceSlugScaleAuditRoute: typeof AppWorkspaceSlugScaleAuditRoute
   AppWorkspaceSlugScaleGovernanceRoute: typeof AppWorkspaceSlugScaleGovernanceRoute
+  AppWorkspaceSlugScaleReviewsRoute: typeof AppWorkspaceSlugScaleReviewsRoute
   AppWorkspaceSlugScaleRoadmapRoute: typeof AppWorkspaceSlugScaleRoadmapRoute
   AppWorkspaceSlugScaleIndexRoute: typeof AppWorkspaceSlugScaleIndexRoute
   AppWorkspaceSlugScaleUseCaseIdReviewRoute: typeof AppWorkspaceSlugScaleUseCaseIdReviewRoute
@@ -1049,6 +1070,7 @@ interface AppWorkspaceSlugScaleRouteChildren {
 const AppWorkspaceSlugScaleRouteChildren: AppWorkspaceSlugScaleRouteChildren = {
   AppWorkspaceSlugScaleAuditRoute: AppWorkspaceSlugScaleAuditRoute,
   AppWorkspaceSlugScaleGovernanceRoute: AppWorkspaceSlugScaleGovernanceRoute,
+  AppWorkspaceSlugScaleReviewsRoute: AppWorkspaceSlugScaleReviewsRoute,
   AppWorkspaceSlugScaleRoadmapRoute: AppWorkspaceSlugScaleRoadmapRoute,
   AppWorkspaceSlugScaleIndexRoute: AppWorkspaceSlugScaleIndexRoute,
   AppWorkspaceSlugScaleUseCaseIdReviewRoute:

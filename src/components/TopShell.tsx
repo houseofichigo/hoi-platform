@@ -116,7 +116,7 @@ export function buildPhases(): NavPhase[] {
       items: [
         { label: "Roadmap", to: "/app/$workspaceSlug/scale/roadmap", icon: MapIcon },
         { label: "Governance Flags", to: "/app/$workspaceSlug/scale/governance", icon: FlagTriangleLeft },
-        { label: "Pilot Reviews", to: "/app/$workspaceSlug/scale", icon: Shield },
+        { label: "Pilot Reviews", to: "/app/$workspaceSlug/scale/reviews", icon: Shield },
         { label: "Audit Log", to: "/app/$workspaceSlug/scale/audit", icon: ShieldCheck },
       ],
     },

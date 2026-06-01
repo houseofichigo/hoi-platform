@@ -10,10 +10,11 @@ function ScaleLayout() {
   const { workspace } = useWorkspace();
   const location = useLocation();
   if (!workspace) return null;
-  const tabs: ReadonlyArray<{ to: string; label: string; exact?: boolean }> = [
+  const tabs: ReadonlyArray<{ to: string; label: string; exact?: boolean; review?: boolean }> = [
     { to: "/app/$workspaceSlug/scale", label: "Overview", exact: true },
     { to: "/app/$workspaceSlug/scale/roadmap", label: "Roadmap" },
     { to: "/app/$workspaceSlug/scale/governance", label: "Governance" },
+    { to: "/app/$workspaceSlug/scale/reviews", label: "Pilot Reviews", review: true },
     { to: "/app/$workspaceSlug/scale/audit", label: "Audit" },
   ];
 
@@ -33,9 +34,12 @@ function ScaleLayout() {
 
       <nav className="flex flex-wrap gap-1 border-b border-chalk">
         {tabs.map((t) => {
+          const tabPath = t.to.replace("$workspaceSlug", workspace.slug);
           const active = t.exact
             ? location.pathname === base || location.pathname === `${base}/`
-            : location.pathname.startsWith(t.to.replace("$workspaceSlug", workspace.slug));
+            : t.review
+              ? location.pathname.startsWith(tabPath) || /^\/app\/[^/]+\/scale\/[^/]+\/review$/.test(location.pathname)
+              : location.pathname.startsWith(tabPath);
           return (
             <Link
               key={t.label}
