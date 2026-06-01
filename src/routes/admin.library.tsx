@@ -1,21 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { Archive, Copy, Plus, Upload } from "lucide-react";
+import { Archive, Copy, Eye, History, Plus, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useHoiAdmin } from "@/hooks/useHoiAdmin";
+import { AdminNotesPanel } from "@/components/admin/AdminNotesPanel";
 import { AdminPageHeader, AdminShell } from "@/components/admin/AdminShell";
 import {
   archiveLibraryItem,
   createLibraryItem,
   duplicateLibraryItem,
+  listLibraryItemVersions,
   listLibraryItems,
   updateLibraryItem,
   uploadLibraryFile,
 } from "@/lib/library/queries";
 import { TYPE_LIST, TYPE_SCHEMAS } from "@/lib/library/typeSchemas";
-import type { LibraryEditorialStatus, LibraryItem, LibraryType } from "@/lib/library/types";
+import type { LibraryEditorialStatus, LibraryItem, LibraryItemVersion, LibraryType } from "@/lib/library/types";
 import { isLibraryType, LIBRARY_TYPES } from "@/lib/library/types";
 import { MODULES, PHASES } from "@/lib/curriculum";
 
@@ -31,6 +33,8 @@ function AdminLibrary() {
   const [statusFilter, setStatusFilter] = useState<"all" | LibraryEditorialStatus>("all");
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<LibraryItem | "new" | null>(null);
+  const [previewing, setPreviewing] = useState<LibraryItem | null>(null);
+  const [versioning, setVersioning] = useState<LibraryItem | null>(null);
 
   const { data: items = [], isLoading } = useQuery({
     enabled: admin.isHoiAdmin,
@@ -208,6 +212,20 @@ function AdminLibrary() {
                       {admin.canManageContent && (
                         <div className="flex justify-end gap-2">
                           <button
+                            onClick={() => setPreviewing(it)}
+                            className="text-slate hover:text-navy"
+                            title="Preview"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => setVersioning(it)}
+                            className="text-slate hover:text-navy"
+                            title="Version history"
+                          >
+                            <History className="h-4 w-4" />
+                          </button>
+                          <button
                             onClick={() => duplicateMut.mutate(it)}
                             className="text-slate hover:text-navy"
                             title="Duplicate"
@@ -252,8 +270,182 @@ function AdminLibrary() {
           }}
         />
       )}
+      {previewing && <LibraryPreview item={previewing} onClose={() => setPreviewing(null)} />}
+      {versioning && <VersionHistory item={versioning} onClose={() => setVersioning(null)} />}
       </div>
     </AdminShell>
+  );
+}
+
+function LibraryPreview({ item, onClose }: { item: LibraryItem; onClose: () => void }) {
+  const markdown = typeof item.metadata.content_markdown === "string" ? item.metadata.content_markdown : "";
+  const status = item.editorial_status ?? (item.published ? "published" : "draft");
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-navy/50 p-4">
+      <div className="my-8 w-full max-w-[900px] space-y-5 rounded-lg bg-paper p-6 shadow-xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="eyebrow-muted">LIBRARY PREVIEW · {TYPE_SCHEMAS[item.type].label.toUpperCase()}</p>
+            <h2 className="mt-2 text-[22px] font-medium text-navy">{item.title}</h2>
+            {item.summary && <p className="mt-1 max-w-2xl text-[13px] leading-6 text-slate">{item.summary}</p>}
+          </div>
+          <button onClick={onClose} className="text-[13px] text-slate hover:text-navy">
+            Close
+          </button>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-4">
+          <PreviewFact label="Status" value={status.replace("_", " ")} />
+          <PreviewFact label="Version" value={`v${item.version}`} />
+          <PreviewFact label="Updated" value={new Date(item.updated_at).toLocaleDateString()} />
+          <PreviewFact label="Last reviewed" value={item.last_reviewed_at ? new Date(item.last_reviewed_at).toLocaleDateString() : "Not reviewed"} />
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="space-y-4">
+            {markdown ? (
+              <section className="rounded-md border border-chalk bg-mist p-4">
+                <p className="eyebrow-muted">MARKDOWN CONTENT</p>
+                <pre className="mt-3 whitespace-pre-wrap text-[13px] leading-6 text-navy">{markdown}</pre>
+              </section>
+            ) : (
+              <section className="rounded-md border border-dashed border-chalk p-4 text-[13px] text-slate">
+                No inline markdown content is stored for this item.
+              </section>
+            )}
+
+            {item.content_url && (
+              <section className="rounded-md border border-chalk p-4">
+                <p className="eyebrow-muted">CONTENT FILE OR URL</p>
+                <a href={item.content_url} target="_blank" rel="noreferrer" className="mt-2 block break-all text-[13px] text-terracotta hover:underline">
+                  {item.content_url}
+                </a>
+              </section>
+            )}
+
+            <section className="rounded-md border border-chalk p-4">
+              <p className="eyebrow-muted">TYPE-SPECIFIC METADATA</p>
+              <pre className="mt-3 max-h-[360px] overflow-auto whitespace-pre-wrap rounded bg-mist p-3 text-[12px] text-navy">
+                {JSON.stringify(item.metadata, null, 2)}
+              </pre>
+            </section>
+          </div>
+
+          <div className="space-y-4">
+            <section className="rounded-md border border-chalk p-4">
+              <p className="eyebrow-muted">MAPPING</p>
+              <TagBlock label="Modules" values={item.module_ids} />
+              <TagBlock label="Phases" values={item.phase_ids} />
+              <TagBlock label="Tags" values={item.tags} />
+            </section>
+            {item.internal_notes && (
+              <section className="rounded-md border border-chalk p-4">
+                <p className="eyebrow-muted">INTERNAL EDITORIAL NOTES</p>
+                <p className="mt-2 whitespace-pre-wrap text-[13px] leading-6 text-slate">{item.internal_notes}</p>
+              </section>
+            )}
+            <AdminNotesPanel entityType="library_item" entityId={item.id} title="Admin notes" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VersionHistory({ item, onClose }: { item: LibraryItem; onClose: () => void }) {
+  const { data: versions = [], isLoading } = useQuery<LibraryItemVersion[]>({
+    queryKey: ["library", "versions", item.id],
+    queryFn: () => listLibraryItemVersions(item.id),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-navy/50 p-4">
+      <div className="my-8 w-full max-w-[760px] space-y-5 rounded-lg bg-paper p-6 shadow-xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="eyebrow-muted">VERSION HISTORY</p>
+            <h2 className="mt-2 text-[20px] font-medium text-navy">{item.title}</h2>
+            <p className="mt-1 text-[13px] text-slate">
+              The current item is v{item.version}. Previous snapshots are captured whenever an admin edits the item.
+            </p>
+          </div>
+          <button onClick={onClose} className="text-[13px] text-slate hover:text-navy">
+            Close
+          </button>
+        </div>
+
+        <div className="rounded-md border border-chalk bg-mist p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[13px] font-medium text-navy">Current version</p>
+              <p className="text-[12px] text-slate">v{item.version} · {new Date(item.updated_at).toLocaleString()}</p>
+            </div>
+            <StatusPill status={item.editorial_status ?? (item.published ? "published" : "draft")} />
+          </div>
+        </div>
+
+        {isLoading ? (
+          <p className="text-[13px] text-slate">Loading version history...</p>
+        ) : versions.length === 0 ? (
+          <div className="rounded-md border border-dashed border-chalk p-6 text-center text-[13px] text-slate">
+            No previous versions yet. The first snapshot is created when this item is edited.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {versions.map((version) => (
+              <details key={version.id} className="rounded-md border border-chalk p-4">
+                <summary className="cursor-pointer">
+                  <span className="font-medium text-navy">v{version.version}</span>
+                  <span className="ml-2 text-[12px] text-slate">
+                    {new Date(version.created_at).toLocaleString()}
+                  </span>
+                </summary>
+                <div className="mt-3 space-y-3">
+                  <div>
+                    <p className="text-[13px] font-medium text-navy">{version.snapshot.title}</p>
+                    {version.snapshot.summary && (
+                      <p className="mt-1 text-[12px] leading-5 text-slate">{version.snapshot.summary}</p>
+                    )}
+                  </div>
+                  <pre className="max-h-[300px] overflow-auto whitespace-pre-wrap rounded bg-mist p-3 text-[12px] text-navy">
+                    {JSON.stringify(version.snapshot, null, 2)}
+                  </pre>
+                </div>
+              </details>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PreviewFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-chalk p-3">
+      <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate">{label}</p>
+      <p className="mt-1 text-[13px] font-medium text-navy">{value}</p>
+    </div>
+  );
+}
+
+function TagBlock({ label, values }: { label: string; values: string[] }) {
+  return (
+    <div className="mt-3">
+      <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate">{label}</p>
+      {values.length ? (
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          {values.map((value) => (
+            <span key={value} className="rounded-full border border-chalk px-2 py-0.5 text-[11px] text-navy">
+              {value}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-1 text-[12px] text-slate">None</p>
+      )}
+    </div>
   );
 }
 

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AdminPageHeader, AdminShell } from "@/components/admin/AdminShell";
-import { getAdminAudit } from "@/lib/admin/admin.functions";
+import { getAdminAudit, type AdminAuditEntry } from "@/lib/admin/admin.functions";
 
 export const Route = createFileRoute("/admin/audit")({
   component: AdminAudit,
@@ -10,7 +10,7 @@ export const Route = createFileRoute("/admin/audit")({
 
 function AdminAudit() {
   const getAudit = useServerFn(getAdminAudit);
-  const { data = [], isLoading, error } = useQuery({
+  const { data = [], isLoading, error } = useQuery<AdminAuditEntry[]>({
     queryKey: ["admin", "audit"],
     queryFn: () => getAudit(),
   });

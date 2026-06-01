@@ -57,3 +57,12 @@ export interface LibraryListFilters {
   editorialStatus?: LibraryEditorialStatus;
   limit?: number;
 }
+
+export interface LibraryItemVersion {
+  id: string;
+  library_item_id: string;
+  version: number;
+  snapshot: LibraryItem;
+  changed_by: string | null;
+  created_at: string;
+}

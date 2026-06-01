@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AdminPageHeader, AdminShell, AdminStat } from "@/components/admin/AdminShell";
-import { getAdminDashboard } from "@/lib/admin/admin.functions";
+import { getAdminDashboard, type AdminDashboardData } from "@/lib/admin/admin.functions";
 
 export const Route = createFileRoute("/admin/")({
   component: AdminDashboard,
@@ -10,7 +10,7 @@ export const Route = createFileRoute("/admin/")({
 
 function AdminDashboard() {
   const getDashboard = useServerFn(getAdminDashboard);
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery<AdminDashboardData>({
     queryKey: ["admin", "dashboard"],
     queryFn: () => getDashboard(),
   });

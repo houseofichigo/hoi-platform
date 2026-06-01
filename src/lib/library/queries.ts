@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type {
   LibraryEditorialStatus,
   LibraryItem,
+  LibraryItemVersion,
   LibraryListFilters,
   LibraryType,
 } from "./types";
@@ -185,4 +186,17 @@ export async function uploadLibraryFile(file: File, prefix = "uploads"): Promise
   if (error) throw error;
   const { data } = supabase.storage.from("library-files").getPublicUrl(path);
   return data.publicUrl;
+}
+
+export async function listLibraryItemVersions(itemId: string): Promise<LibraryItemVersion[]> {
+  const { data, error } = await (supabase as any)
+    .from("library_item_versions")
+    .select("id, library_item_id, version, snapshot, changed_by, created_at")
+    .eq("library_item_id", itemId)
+    .order("version", { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as Array<Omit<LibraryItemVersion, "snapshot"> & { snapshot: unknown }>).map((row) => ({
+    ...row,
+    snapshot: (row.snapshot ?? {}) as LibraryItem,
+  }));
 }
