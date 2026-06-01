@@ -7,8 +7,11 @@ import { AdminPageHeader, AdminShell } from "@/components/admin/AdminShell";
 import { AdminNotesPanel } from "@/components/admin/AdminNotesPanel";
 import { useHoiAdmin } from "@/hooks/useHoiAdmin";
 import {
+  getAdminWorkspaceMembers,
   getAdminWorkspaces,
+  updateAdminWorkspaceMemberRole,
   updateAdminWorkspace,
+  type AdminWorkspaceMemberRow,
   type AdminWorkspaceListItem,
 } from "@/lib/admin/admin.functions";
 
@@ -204,11 +207,93 @@ function WorkspaceDrawer({
           </div>
         </section>
 
+        <WorkspaceMembersAdminPanel workspaceId={workspace.id} canManageRoles={admin.role === "owner" || admin.role === "admin"} />
+
         <div className="mt-5">
           <AdminNotesPanel entityType="workspace" entityId={workspace.id} />
         </div>
       </aside>
     </div>
+  );
+}
+
+function WorkspaceMembersAdminPanel({
+  workspaceId,
+  canManageRoles,
+}: {
+  workspaceId: string;
+  canManageRoles: boolean;
+}) {
+  const qc = useQueryClient();
+  const getMembers = useServerFn(getAdminWorkspaceMembers);
+  const updateRole = useServerFn(updateAdminWorkspaceMemberRole);
+  const { data = [], isLoading, error } = useQuery<AdminWorkspaceMemberRow[]>({
+    queryKey: ["admin", "workspace-members", workspaceId],
+    queryFn: () => getMembers({ data: { workspaceId } }),
+  });
+
+  const mutation = useMutation({
+    mutationFn: (input: { userId: string; role: AdminWorkspaceMemberRow["role"] }) =>
+      updateRole({ data: { workspaceId, userId: input.userId, role: input.role } }),
+    onSuccess: () => {
+      toast.success("Workspace role updated");
+      qc.invalidateQueries({ queryKey: ["admin", "workspace-members", workspaceId] });
+      qc.invalidateQueries({ queryKey: ["admin", "workspaces"] });
+      qc.invalidateQueries({ queryKey: ["admin", "audit"] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  return (
+    <section className="mt-5 rounded-md border border-chalk bg-white p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="eyebrow-muted">Workspace admins and members</p>
+          <p className="mt-2 text-[12px] text-slate">
+            House of Ichigo controls owner/admin promotion. Client admins can invite members and viewers only.
+          </p>
+        </div>
+        {!canManageRoles && (
+          <span className="rounded-full bg-mist px-2.5 py-1 text-[11px] text-slate">Read-only</span>
+        )}
+      </div>
+
+      {isLoading ? (
+        <p className="mt-4 text-[13px] text-slate">Loading members...</p>
+      ) : error ? (
+        <p className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-[13px] text-red-700">
+          {(error as Error).message}
+        </p>
+      ) : (
+        <div className="mt-4 divide-y divide-chalk">
+          {data.map((member) => (
+            <div key={member.user_id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+              <div className="min-w-0">
+                <p className="text-[13px] font-medium text-navy">{member.full_name || member.email || "Unnamed member"}</p>
+                <p className="truncate text-[12px] text-slate">{member.email || member.user_id}</p>
+              </div>
+              <select
+                value={member.role}
+                disabled={!canManageRoles || mutation.isPending}
+                onChange={(e) =>
+                  mutation.mutate({
+                    userId: member.user_id,
+                    role: e.target.value as AdminWorkspaceMemberRow["role"],
+                  })
+                }
+                className="input w-[150px] text-[12px]"
+              >
+                <option value="owner">Owner</option>
+                <option value="admin">Admin</option>
+                <option value="member">Member</option>
+                <option value="viewer">Viewer</option>
+              </select>
+            </div>
+          ))}
+          {data.length === 0 && <p className="py-4 text-[13px] text-slate">No members found.</p>}
+        </div>
+      )}
+    </section>
   );
 }
 

@@ -11,7 +11,7 @@ const FROM_EMAIL = "House of Ichigo <onboarding@resend.dev>";
 const InviteInput = z.object({
   workspace_id: z.string().uuid(),
   email: z.string().email().max(255).transform((v) => v.trim().toLowerCase()),
-  role: z.enum(["admin", "member", "viewer"]),
+  role: z.enum(["member", "viewer"]),
   origin: z.string().url().optional(),
 });
 

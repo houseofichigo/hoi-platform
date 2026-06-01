@@ -125,7 +125,7 @@ export function buildPhases(): NavPhase[] {
 
 export function TopShell({ children }: { children: ReactNode }) {
   const { user, signOut } = useAuth();
-  const { workspace, loading } = useWorkspace();
+  const { workspace, loading, isAdmin } = useWorkspace();
   const { isHoiAdmin } = useHoiAdmin();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -217,10 +217,11 @@ export function TopShell({ children }: { children: ReactNode }) {
                 onNavigate={navigateTo}
               />
             ))}
-            {isHoiAdmin && (
+            {isAdmin && (
               <Link
-                to="/admin"
-                className={navItemClass(pathname.includes("/admin"))}
+                to="/app/$workspaceSlug/admin"
+                params={{ workspaceSlug: slug }}
+                className={navItemClass(pathname.startsWith(`/app/${slug}/admin`))}
               >
                 <Settings className="h-3.5 w-3.5" />
                 Admin
@@ -272,6 +273,20 @@ export function TopShell({ children }: { children: ReactNode }) {
                     ))}
                   </div>
                 ))}
+                {isAdmin && (
+                  <div className="mt-2">
+                    <p className="px-4 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-slate">
+                      Workspace
+                    </p>
+                    <MobileNavLink
+                      label="Admin"
+                      href={`/app/${slug}/admin`}
+                      icon={Settings}
+                      active={pathname.startsWith(`/app/${slug}/admin`)}
+                      onClick={() => setMobileOpen(false)}
+                    />
+                  </div>
+                )}
               </div>
             </SheetContent>
           </Sheet>
@@ -324,15 +339,29 @@ export function TopShell({ children }: { children: ReactNode }) {
                 {user?.email}
               </DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-chalk" />
-              <DropdownMenuItem
-                onSelect={() =>
-                  navigate({ to: "/app/$workspaceSlug/invite", params: { workspaceSlug: slug } })
-                }
-                className="cursor-pointer text-[14px] text-navy focus:bg-mist focus:text-navy"
-              >
-                <UserPlus className="mr-2 h-4 w-4" />
-                Invite members
-              </DropdownMenuItem>
+              {isHoiAdmin && (
+                <>
+                  <DropdownMenuItem
+                    onSelect={() => navigate({ to: "/admin" })}
+                    className="cursor-pointer text-[14px] text-navy focus:bg-mist focus:text-navy"
+                  >
+                    <ShieldCheck className="mr-2 h-4 w-4" />
+                    House of Ichigo Admin
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-chalk" />
+                </>
+              )}
+              {isAdmin && (
+                <DropdownMenuItem
+                  onSelect={() =>
+                    navigate({ to: "/app/$workspaceSlug/invite", params: { workspaceSlug: slug } })
+                  }
+                  className="cursor-pointer text-[14px] text-navy focus:bg-mist focus:text-navy"
+                >
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Invite members
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 onSelect={() =>
                   navigate({ to: "/app/$workspaceSlug/settings", params: { workspaceSlug: slug } })
@@ -375,6 +404,18 @@ export function TopShell({ children }: { children: ReactNode }) {
           ))}
           <CommandSeparator />
           <CommandGroup heading="Workspace">
+            {isAdmin && (
+              <CommandItem
+                value="Workspace Admin"
+                onSelect={() => {
+                  navigate({ to: "/app/$workspaceSlug/admin", params: { workspaceSlug: slug } });
+                  setSearchOpen(false);
+                }}
+              >
+                <Settings className="mr-2 h-4 w-4 text-slate" />
+                Admin
+              </CommandItem>
+            )}
             <CommandItem
               value="Settings"
               onSelect={() => {
@@ -385,16 +426,18 @@ export function TopShell({ children }: { children: ReactNode }) {
               <Settings className="mr-2 h-4 w-4 text-slate" />
               Settings
             </CommandItem>
-            <CommandItem
-              value="Invite members"
-              onSelect={() => {
-                navigate({ to: "/app/$workspaceSlug/invite", params: { workspaceSlug: slug } });
-                setSearchOpen(false);
-              }}
-            >
-              <UserPlus className="mr-2 h-4 w-4 text-slate" />
-              Invite members
-            </CommandItem>
+            {isAdmin && (
+              <CommandItem
+                value="Invite members"
+                onSelect={() => {
+                  navigate({ to: "/app/$workspaceSlug/invite", params: { workspaceSlug: slug } });
+                  setSearchOpen(false);
+                }}
+              >
+                <UserPlus className="mr-2 h-4 w-4 text-slate" />
+                Invite members
+              </CommandItem>
+            )}
             <CommandItem
               value="Notifications"
               onSelect={() => {
@@ -405,6 +448,23 @@ export function TopShell({ children }: { children: ReactNode }) {
               Notifications
             </CommandItem>
           </CommandGroup>
+          {isHoiAdmin && (
+            <>
+              <CommandSeparator />
+              <CommandGroup heading="House of Ichigo">
+                <CommandItem
+                  value="House of Ichigo Admin"
+                  onSelect={() => {
+                    navigate({ to: "/admin" });
+                    setSearchOpen(false);
+                  }}
+                >
+                  <ShieldCheck className="mr-2 h-4 w-4 text-slate" />
+                  Internal admin
+                </CommandItem>
+              </CommandGroup>
+            </>
+          )}
         </CommandList>
       </CommandDialog>
 

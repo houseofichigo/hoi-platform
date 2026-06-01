@@ -19,7 +19,7 @@ function InvitePage() {
   const qc = useQueryClient();
   const sendInvite = useServerFn(sendWorkspaceInvite);
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"admin" | "member" | "viewer">("member");
+  const [role, setRole] = useState<"member" | "viewer">("member");
   const [submitting, setSubmitting] = useState(false);
 
   const pendingQuery = useQuery({
@@ -117,7 +117,7 @@ function InvitePage() {
     }
   };
 
-  const onResend = async (inviteEmail: string, inviteRole: "admin" | "member" | "viewer") => {
+  const onResend = async (inviteEmail: string, inviteRole: "member" | "viewer") => {
     if (!confirm(`Resend invitation to ${inviteEmail}?`)) return;
     try {
       await sendInvite({
@@ -149,7 +149,7 @@ function InvitePage() {
         Invite to <span className="accent-italic">{workspace.name}.</span>
       </h1>
       <p className="mt-3 text-[16px] text-graphite">
-        Add people to your workspace. They'll receive an email with a link to join.
+        Add people to your workspace. They'll receive an email with a link to join. Workspace admin access is granted by House of Ichigo.
       </p>
 
       {/* Send invitation */}
@@ -171,13 +171,15 @@ function InvitePage() {
             <span className="text-[13px] font-medium text-navy">Role</span>
             <select
               value={role}
-              onChange={(e) => setRole(e.target.value as "admin" | "member" | "viewer")}
+              onChange={(e) => setRole(e.target.value as "member" | "viewer")}
               className="input-ichigo mt-1.5"
             >
-              <option value="admin">Admin — can manage members and settings</option>
               <option value="member">Member — can use the workspace</option>
               <option value="viewer">Viewer — read-only access</option>
             </select>
+            <span className="mt-1.5 block text-[12px] text-slate">
+              Client admin and owner roles are managed by House of Ichigo from the internal admin console.
+            </span>
           </label>
           <button type="submit" disabled={submitting} className="btn-ichigo btn-ichigo-primary">
             {submitting ? "Sending…" : "Send invitation"}
@@ -212,12 +214,18 @@ function InvitePage() {
                     <td className="px-4 py-3 text-slate">{new Date(inv.created_at).toLocaleDateString()}</td>
                     <td className="px-4 py-3 text-slate">{new Date(inv.expires_at).toLocaleDateString()}</td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => onResend(inv.email, inv.role as "admin" | "member" | "viewer")}
-                        className="mr-3 text-[12px] text-azure hover:underline"
-                      >
-                        Resend
-                      </button>
+                      {inv.role === "member" || inv.role === "viewer" ? (
+                        <button
+                          onClick={() => onResend(inv.email, inv.role as "member" | "viewer")}
+                          className="mr-3 text-[12px] text-azure hover:underline"
+                        >
+                          Resend
+                        </button>
+                      ) : (
+                        <span className="mr-3 text-[12px] text-slate" title="Ask House of Ichigo to manage admin invitations.">
+                          HOI managed
+                        </span>
+                      )}
                       <button
                         onClick={() => onRevoke(inv.id)}
                         className="text-[12px] text-danger hover:underline"

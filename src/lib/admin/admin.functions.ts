@@ -696,6 +696,109 @@ export const updateAdminWorkspace = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export type AdminWorkspaceMemberRow = {
+  user_id: string;
+  role: "owner" | "admin" | "member" | "viewer";
+  joined_at: string;
+  invited_by: string | null;
+  full_name: string | null;
+  email: string | null;
+};
+
+const WorkspaceMembersInput = z.object({
+  workspaceId: z.string().uuid(),
+});
+
+export const getAdminWorkspaceMembers = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => WorkspaceMembersInput.parse(input))
+  .handler(async ({ data, context }): Promise<AdminWorkspaceMemberRow[]> => {
+    await requireHoiAdmin(context.userId, ["owner", "admin", "support", "read_only"]);
+
+    const { data: members, error } = await supabaseAdmin
+      .from("workspace_members")
+      .select("user_id, role, joined_at, invited_by")
+      .eq("workspace_id", data.workspaceId)
+      .order("joined_at", { ascending: true });
+    if (error) throw new Error(error.message);
+
+    const userIds = [...new Set((members ?? []).map((member) => member.user_id))];
+    const profileByUser = new Map<string, { full_name: string | null }>();
+    if (userIds.length) {
+      const { data: profiles, error: profileErr } = await supabaseAdmin
+        .from("profiles")
+        .select("user_id, full_name")
+        .in("user_id", userIds);
+      if (profileErr) throw new Error(profileErr.message);
+      for (const profile of profiles ?? []) profileByUser.set(profile.user_id, profile);
+    }
+
+    const { data: authUsers, error: authErr } = await supabaseAdmin.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000,
+    });
+    if (authErr) throw new Error(authErr.message);
+    const emailByUser = new Map(authUsers.users.map((user) => [user.id, user.email ?? null]));
+
+    return (members ?? []).map((member) => ({
+      user_id: member.user_id,
+      role: member.role as AdminWorkspaceMemberRow["role"],
+      joined_at: member.joined_at,
+      invited_by: member.invited_by,
+      full_name: profileByUser.get(member.user_id)?.full_name ?? null,
+      email: emailByUser.get(member.user_id) ?? null,
+    }));
+  });
+
+const WorkspaceMemberRoleInput = z.object({
+  workspaceId: z.string().uuid(),
+  userId: z.string().uuid(),
+  role: z.enum(["owner", "admin", "member", "viewer"]),
+});
+
+export const updateAdminWorkspaceMemberRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => WorkspaceMemberRoleInput.parse(input))
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    await requireHoiAdmin(context.userId, ["owner", "admin"]);
+
+    const { data: workspace, error: wsErr } = await supabaseAdmin
+      .from("workspaces")
+      .select("id, name")
+      .eq("id", data.workspaceId)
+      .maybeSingle();
+    if (wsErr) throw new Error(wsErr.message);
+    if (!workspace) throw new Error("Workspace not found");
+
+    const { data: before, error: beforeErr } = await supabaseAdmin
+      .from("workspace_members")
+      .select("role")
+      .eq("workspace_id", data.workspaceId)
+      .eq("user_id", data.userId)
+      .maybeSingle();
+    if (beforeErr) throw new Error(beforeErr.message);
+    if (!before) throw new Error("Workspace member not found");
+    if (before.role === data.role) return { ok: true };
+
+    const { error } = await supabaseAdmin
+      .from("workspace_members")
+      .update({ role: data.role })
+      .eq("workspace_id", data.workspaceId)
+      .eq("user_id", data.userId);
+    if (error) throw new Error(error.message);
+
+    await writeAdminAudit({
+      actorId: context.userId,
+      actionType: "workspace_member_role_updated",
+      entityType: "workspace",
+      entityId: data.workspaceId,
+      entityLabel: workspace.name,
+      beforeState: { user_id: data.userId, role: before.role },
+      afterState: { user_id: data.userId, role: data.role },
+    });
+    return { ok: true };
+  });
+
 const SubscriptionInput = z.object({
   workspaceId: z.string().uuid(),
   planId: z.string().min(1),
