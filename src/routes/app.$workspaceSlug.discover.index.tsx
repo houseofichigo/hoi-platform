@@ -1,0 +1,131 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { Search } from "lucide-react";
+import { useWorkspace } from "@/hooks/useWorkspace";
+import { listLibraryItems } from "@/lib/library/queries";
+import { TYPE_LIST, TYPE_SCHEMAS } from "@/lib/library/typeSchemas";
+import { LibraryItemCard } from "@/components/library/LibraryItemCard";
+
+export const Route = createFileRoute("/app/$workspaceSlug/discover/")({
+  component: DiscoverHome,
+});
+
+function DiscoverHome() {
+  const { workspace } = useWorkspace();
+  const [search, setSearch] = useState("");
+
+  const { data: items = [] } = useQuery({
+    queryKey: ["library", "all", "published"],
+    queryFn: () => listLibraryItems({}),
+  });
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const it of items) c[it.type] = (c[it.type] ?? 0) + 1;
+    return c;
+  }, [items]);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return [];
+    const q = search.trim().toLowerCase();
+    return items.filter((it) =>
+      [it.title, it.summary ?? "", it.tags.join(" ")].join(" ").toLowerCase().includes(q),
+    );
+  }, [items, search]);
+
+  const recent = useMemo(() => items.slice(0, 6), [items]);
+  if (!workspace) return null;
+  const slug = workspace.slug;
+
+  return (
+    <div className="space-y-10">
+      <header>
+        <p className="eyebrow">DISCOVER · LIBRARY</p>
+        <h1 className="h-display-md mt-2 max-w-[24ch]">
+          Find what helps you <span className="accent-italic">build.</span>
+        </h1>
+        <p className="lead mt-2 max-w-[60ch]">
+          Prompts, agents, tools, videos, case studies, and more — curated by House of Ichigo.
+        </p>
+      </header>
+
+      <div className="flex items-center gap-2 rounded-md border border-chalk bg-paper px-3 py-2.5">
+        <Search className="h-4 w-4 text-slate" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search the whole library…"
+          className="flex-1 bg-transparent text-[14px] text-navy outline-none placeholder:text-slate"
+        />
+      </div>
+
+      {search.trim() ? (
+        <section>
+          <p className="eyebrow-muted mb-3">RESULTS · {filtered.length}</p>
+          {filtered.length === 0 ? (
+            <p className="text-[13px] text-slate">No matches yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {filtered.map((it) => (
+                <LibraryItemCard key={it.id} item={it} />
+              ))}
+            </div>
+          )}
+        </section>
+      ) : (
+        <>
+          <section>
+            <p className="eyebrow-muted mb-3">CATEGORIES</p>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+              {TYPE_LIST.map((s) => {
+                const Icon = s.icon;
+                return (
+                  <Link
+                    key={s.id}
+                    to="/app/$workspaceSlug/discover/$"
+                    params={{ workspaceSlug: slug, _splat: s.slug }}
+                    className="group card flex flex-col gap-2 transition-colors hover:border-terracotta"
+                  >
+                    <div className="flex items-center justify-between">
+                      <Icon className="h-4 w-4 text-terracotta" />
+                      <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate">
+                        {counts[s.id] ?? 0}
+                      </span>
+                    </div>
+                    <p className="text-[14px] font-medium text-navy">{s.plural}</p>
+                    <p className="text-[12px] leading-snug text-slate">{s.description}</p>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+
+          {recent.length > 0 && (
+            <section>
+              <p className="eyebrow-muted mb-3">RECENT</p>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {recent.map((it) => (
+                  <LibraryItemCard key={it.id} item={it} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {items.length === 0 && (
+            <div className="card border-l-[3px] border-l-chalk">
+              <p className="text-[14px] text-navy">The library is being populated.</p>
+              <p className="mt-1 text-[12px] text-slate">
+                Resources will appear here as the House of Ichigo team publishes them.
+              </p>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* dev hint suppression */}
+      <span className="sr-only">{TYPE_SCHEMAS.prompts.label}</span>
+    </div>
+  );
+}

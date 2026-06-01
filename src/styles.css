@@ -1,0 +1,443 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * House of Ichigo design system.
+ *
+ * Brand tokens live in :root using hex (per design spec).
+ * shadcn/ui semantic tokens are remapped to brand values so all existing
+ * shadcn components inherit the brand palette automatically.
+ */
+
+@theme inline {
+  /* Brand colors as Tailwind utilities (bg-navy, text-terracotta, ...) */
+  --color-navy: var(--ichigo-navy);
+  --color-ink: var(--ichigo-ink);
+  --color-terracotta: var(--ichigo-orange);
+  --color-azure: var(--ichigo-azure);
+  --color-mist: var(--ichigo-mist);
+  --color-paper: var(--paper);
+  --color-chalk: var(--chalk);
+  --color-graphite: var(--graphite);
+  --color-slate: var(--slate);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+
+  /* Brand fonts as Tailwind utilities (font-display, font-sans, font-mono) */
+  --font-display: "Fraunces", Georgia, serif;
+  --font-sans: "Inter Tight", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* Brand radii */
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+
+  /* shadcn semantic mappings (unchanged keys, brand-remapped values) */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  /* Primary */
+  --ichigo-navy: #1E2B4D;
+  --ichigo-ink: #0A0E27;
+  --ichigo-orange: #CF5B2B;
+
+  /* Secondary */
+  --ichigo-azure: #3B82F6;
+  --ichigo-mist: #EFF3FB;
+
+  /* Neutrals */
+  --paper: #FAFAF7;
+  --chalk: #E8E8E3;
+  --graphite: #3D3D3A;
+  --slate: #6B6B66;
+  --white: #FFFFFF;
+
+  /* Semantic */
+  --success: #0891B2;
+  --warning: #F59E0B;
+  --danger: #DC2626;
+
+  /* Fonts */
+  --font-display: "Fraunces", Georgia, serif;
+  --font-sans: "Inter Tight", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* Spacing (8px base) */
+  --s-1: 8px;
+  --s-2: 16px;
+  --s-3: 24px;
+  --s-4: 32px;
+  --s-5: 48px;
+  --s-6: 64px;
+  --s-7: 96px;
+  --s-8: 128px;
+
+  /* Radii */
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 16px;
+  --r-xl: 24px;
+  --r-full: 9999px;
+
+  /* shadcn semantic tokens remapped to brand */
+  --radius: 8px;
+  --background: var(--paper);
+  --foreground: var(--ichigo-navy);
+  --card: var(--white);
+  --card-foreground: var(--ichigo-navy);
+  --popover: var(--white);
+  --popover-foreground: var(--ichigo-navy);
+  --primary: var(--ichigo-orange);
+  --primary-foreground: var(--white);
+  --secondary: var(--ichigo-mist);
+  --secondary-foreground: var(--ichigo-navy);
+  --muted: var(--ichigo-mist);
+  --muted-foreground: var(--slate);
+  --accent: var(--ichigo-mist);
+  --accent-foreground: var(--ichigo-navy);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--white);
+  --border: var(--chalk);
+  --input: var(--chalk);
+  --ring: var(--ichigo-orange);
+  --sidebar: var(--paper);
+  --sidebar-foreground: var(--ichigo-navy);
+  --sidebar-primary: var(--ichigo-orange);
+  --sidebar-primary-foreground: var(--white);
+  --sidebar-accent: var(--ichigo-mist);
+  --sidebar-accent-foreground: var(--ichigo-navy);
+  --sidebar-border: var(--chalk);
+  --sidebar-ring: var(--ichigo-orange);
+}
+
+.dark {
+  --background: var(--ichigo-ink);
+  --foreground: var(--paper);
+  --card: var(--ichigo-navy);
+  --card-foreground: var(--paper);
+  --popover: var(--ichigo-navy);
+  --popover-foreground: var(--paper);
+  --primary: var(--ichigo-orange);
+  --primary-foreground: var(--white);
+  --secondary: var(--ichigo-navy);
+  --secondary-foreground: var(--paper);
+  --muted: var(--ichigo-navy);
+  --muted-foreground: var(--chalk);
+  --accent: var(--ichigo-navy);
+  --accent-foreground: var(--paper);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--white);
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.15);
+  --ring: var(--ichigo-orange);
+  --sidebar: var(--ichigo-ink);
+  --sidebar-foreground: var(--paper);
+  --sidebar-primary: var(--ichigo-orange);
+  --sidebar-primary-foreground: var(--white);
+  --sidebar-accent: var(--ichigo-navy);
+  --sidebar-accent-foreground: var(--paper);
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: var(--ichigo-orange);
+}
+
+/* ===== Brand base & utility classes ===== */
+
+body {
+  font-family: var(--font-sans);
+  color: var(--ichigo-navy);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-display { font-family: var(--font-display); font-variation-settings: "opsz" 144; }
+.font-sans { font-family: var(--font-sans); }
+.font-mono { font-family: var(--font-mono); }
+
+/* Italic terracotta accent — the brand signature */
+.accent-italic {
+  font-family: var(--font-display);
+  font-style: italic;
+  color: var(--ichigo-orange);
+  font-variation-settings: "opsz" 144;
+}
+
+/* Eyebrow labels — small mono caps used above headings */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ichigo-orange);
+}
+.eyebrow-muted {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--slate);
+}
+
+/* Cards — the dominant container */
+.card {
+  background: var(--white);
+  border: 1px solid var(--chalk);
+  border-radius: var(--r-md);
+  padding: var(--s-3);
+}
+.card-hover {
+  transition: border-color 0.15s, transform 0.15s;
+}
+.card-hover:hover {
+  border-color: var(--ichigo-orange);
+  transform: translateY(-1px);
+}
+.card-dark {
+  background: var(--ichigo-ink);
+  color: var(--white);
+  border-radius: var(--r-md);
+  padding: var(--s-4);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  padding: 10px 18px;
+  border-radius: var(--r-sm);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-primary {
+  background: var(--ichigo-orange);
+  color: var(--white);
+  border-color: var(--ichigo-orange);
+}
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-secondary {
+  background: transparent;
+  color: var(--ichigo-navy);
+  border-color: var(--chalk);
+}
+.btn-secondary:hover { border-color: var(--ichigo-navy); }
+.btn-sm { padding: 6px 12px; font-size: 13px; }
+
+/* Pills / chips */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: var(--r-full);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.pill-terracotta { background: var(--ichigo-orange); color: var(--white); }
+.pill-mist { background: var(--ichigo-mist); color: var(--ichigo-navy); }
+
+/* Lead paragraph */
+.lead {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--graphite);
+  font-weight: 400;
+}
+
+/* ===== Type scale ===== */
+.h-display-xl {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 144;
+  font-size: clamp(56px, 7vw, 88px);
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+  color: var(--ichigo-navy);
+}
+.h-display-lg {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 144;
+  font-size: clamp(44px, 5vw, 64px);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: var(--ichigo-navy);
+}
+.h-display-md {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 144;
+  font-size: clamp(32px, 4vw, 42px);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.1;
+  color: var(--ichigo-navy);
+}
+.h-heading-lg {
+  font-family: var(--font-sans);
+  font-size: 36px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  color: var(--ichigo-navy);
+}
+.h-heading-md {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 144;
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  line-height: 1.2;
+  color: var(--ichigo-navy);
+}
+
+/* Form inputs — brand */
+.input-ichigo {
+  width: 100%;
+  background: var(--white);
+  border: 1px solid var(--chalk);
+  border-radius: var(--r-md);
+  padding: 10px 14px;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  color: var(--ichigo-navy);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.input-ichigo::placeholder { color: var(--slate); }
+.input-ichigo:focus {
+  outline: none;
+  border-color: var(--ichigo-orange);
+  box-shadow: 0 0 0 1px var(--ichigo-orange);
+}
+
+/* Button variants — brand */
+.btn-ichigo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-1);
+  padding: 12px 24px;
+  border-radius: var(--r-md);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s, border-color 0.15s;
+}
+.btn-ichigo:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-ichigo-primary { background: var(--ichigo-orange); color: var(--white); }
+.btn-ichigo-primary:hover:not(:disabled) { opacity: 0.88; }
+.btn-ichigo-secondary { background: var(--ichigo-navy); color: var(--white); }
+.btn-ichigo-secondary:hover:not(:disabled) { opacity: 0.88; }
+.btn-ichigo-outline { background: transparent; color: var(--ichigo-navy); border-color: var(--ichigo-navy); }
+.btn-ichigo-outline:hover:not(:disabled) { background: var(--ichigo-navy); color: var(--white); }
+.btn-ichigo-outline-light { background: transparent; color: var(--white); border-color: rgba(255,255,255,0.4); }
+.btn-ichigo-outline-light:hover:not(:disabled) { background: var(--white); color: var(--ichigo-ink); border-color: var(--white); }
+.btn-ichigo-ghost { background: transparent; color: var(--ichigo-orange); }
+.btn-ichigo-ghost:hover:not(:disabled) { opacity: 0.7; }
+
+/* Focus-visible rings */
+.btn-ichigo:focus-visible,
+.btn-ichigo-primary:focus-visible,
+.btn-ichigo-secondary:focus-visible,
+.btn-ichigo-outline:focus-visible,
+.btn-ichigo-outline-light:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--ichigo-orange);
+  outline-offset: 2px;
+}
+
+
+/* Card hover shadow per spec */
+.card-elevate { transition: box-shadow 0.2s; }
+.card-elevate:hover { box-shadow: 0 4px 20px rgba(30,43,77,0.08); }
+
+/* Ink hero radial glow */
+.ink-glow {
+  background:
+    radial-gradient(ellipse at top right, rgba(207,91,43,0.12), transparent 60%),
+    var(--ichigo-ink);
+}
+
+/* Footer line */
+.ichigo-footer {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--slate);
+}
+.ichigo-footer .accent { color: var(--ichigo-orange); }
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+}
+
+/* Form input utility for admin/library forms */
+.input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border, var(--border));
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.4;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.input:focus {
+  outline: none;
+  border-color: var(--ichigo-orange, var(--primary));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ichigo-orange, var(--primary)) 20%, transparent);
+}
+.input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

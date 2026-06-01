@@ -1,0 +1,2 @@
+GRANT EXECUTE ON FUNCTION public.is_workspace_member(uuid, uuid) TO authenticated, anon, service_role;
+GRANT EXECUTE ON FUNCTION public.has_workspace_role(uuid, uuid, text[]) TO authenticated, anon, service_role;
