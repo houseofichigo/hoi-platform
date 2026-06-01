@@ -901,3 +901,150 @@ export const updateRoadmapEntry = createServerFn({ method: "POST" })
 
     return { ok: true };
   });
+
+// =====================================================================
+// generateEvidencePack — server-owned client evidence export
+// =====================================================================
+
+const EvidencePackInput = z.object({
+  workspaceId: z.string().uuid(),
+});
+
+export const generateEvidencePack = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => EvidencePackInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+
+    const { data: membership, error: memErr } = await supabaseAdmin
+      .from("workspace_members")
+      .select("role")
+      .eq("workspace_id", data.workspaceId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (memErr) throw new Error(memErr.message);
+    if (!membership) throw new Error("Not a workspace member");
+
+    const [
+      workspaceRes,
+      roadmapRes,
+      flagsRes,
+      scoreSnapshotsRes,
+      assessmentRes,
+      auditRes,
+      historyRes,
+      reviewsRes,
+    ] = await Promise.all([
+      supabaseAdmin
+        .from("workspaces")
+        .select("id, name, slug, workspace_profile, use_case_profile, worked_example")
+        .eq("id", data.workspaceId)
+        .single(),
+      supabaseAdmin
+        .from("roadmap_entries")
+        .select(
+          "id, use_case_id, owner_id, stage, target_quarter, priority_score, source_metadata, gate_status, evidence_summary, created_at, updated_at, use_cases(id, name, function, description, status), use_case_scores(*)",
+        )
+        .eq("workspace_id", data.workspaceId)
+        .order("created_at", { ascending: false }),
+      supabaseAdmin
+        .from("governance_flags")
+        .select("*")
+        .eq("workspace_id", data.workspaceId)
+        .order("created_at", { ascending: false }),
+      supabaseAdmin
+        .from("use_case_score_snapshots")
+        .select("id, use_case_id, score_type, scoring_model_version, input_hash, computed_outputs, reason_codes, confidence, computed_at")
+        .eq("workspace_id", data.workspaceId)
+        .order("computed_at", { ascending: false }),
+      supabaseAdmin
+        .from("assessment_score_snapshots")
+        .select("id, score_type, scoring_model_version, input_hash, computed_outputs, reason_codes, confidence, computed_at")
+        .eq("workspace_id", data.workspaceId)
+        .order("computed_at", { ascending: false })
+        .limit(3),
+      supabaseAdmin
+        .from("audit_log")
+        .select("id, action_type, entity_type, entity_id, entity_label, metadata, created_at")
+        .eq("workspace_id", data.workspaceId)
+        .order("created_at", { ascending: false })
+        .limit(250),
+      supabaseAdmin
+        .from("roadmap_stage_history")
+        .select("id, roadmap_entry_id, use_case_id, from_stage, to_stage, reason, changed_by, changed_at")
+        .eq("workspace_id", data.workspaceId)
+        .order("changed_at", { ascending: false }),
+      supabaseAdmin
+        .from("post_pilot_reviews")
+        .select("*")
+        .eq("workspace_id", data.workspaceId)
+        .order("submitted_at", { ascending: false }),
+    ]);
+
+    const error =
+      workspaceRes.error ??
+      roadmapRes.error ??
+      flagsRes.error ??
+      scoreSnapshotsRes.error ??
+      assessmentRes.error ??
+      auditRes.error ??
+      historyRes.error ??
+      reviewsRes.error;
+    if (error) throw new Error(error.message);
+
+    const activeFlags = (flagsRes.data ?? []).filter((flag) =>
+      ["open", "in_progress"].includes(flag.status),
+    );
+    const pack = {
+      generated_at: new Date().toISOString(),
+      generated_by: userId,
+      workspace: workspaceRes.data,
+      summary: {
+        roadmap_entries: roadmapRes.data?.length ?? 0,
+        active_governance_flags: activeFlags.length,
+        blocker_flags: activeFlags.filter((flag) => flag.severity === "hard_stop").length,
+        score_snapshots: scoreSnapshotsRes.data?.length ?? 0,
+        audit_events: auditRes.data?.length ?? 0,
+      },
+      assessment_report: assessmentRes.data?.[0] ?? null,
+      use_case_portfolio: roadmapRes.data ?? [],
+      priority_matrix: (scoreSnapshotsRes.data ?? []).map((snapshot) => ({
+        use_case_id: snapshot.use_case_id,
+        scoring_model_version: snapshot.scoring_model_version,
+        input_hash: snapshot.input_hash,
+        confidence: snapshot.confidence,
+        computed_at: snapshot.computed_at,
+        outputs: snapshot.computed_outputs,
+      })),
+      governance_flag_register: flagsRes.data ?? [],
+      roadmap_plan: roadmapRes.data ?? [],
+      roadmap_stage_history: historyRes.data ?? [],
+      pilot_reviews: reviewsRes.data ?? [],
+      audit_log: auditRes.data ?? [],
+      evidence_checklist: [
+        "Assessment score snapshot and maturity rationale",
+        "Use-case score snapshots with reason codes",
+        "Priority matrix and official classifications",
+        "KSA governance flag register with reviewer and evidence requirements",
+        "Roadmap stage history and blocked transition events",
+        "Pilot review evidence before production promotion",
+        "Closure or accepted-risk notes for active deployment blockers",
+      ],
+    };
+
+    await supabaseAdmin.from("audit_log").insert({
+      workspace_id: data.workspaceId,
+      actor_id: userId,
+      action_type: "evidence_pack_generated",
+      entity_type: "workspace",
+      entity_id: data.workspaceId,
+      entity_label: workspaceRes.data?.name ?? "Workspace",
+      metadata: {
+        active_governance_flags: activeFlags.length,
+        roadmap_entries: roadmapRes.data?.length ?? 0,
+        score_snapshots: scoreSnapshotsRes.data?.length ?? 0,
+      },
+    } as never);
+
+    return pack;
+  });

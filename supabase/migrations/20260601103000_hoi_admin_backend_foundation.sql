@@ -51,6 +51,27 @@ AS $$
   SELECT public.is_hoi_admin(_user_id, ARRAY['owner','admin'])
 $$;
 
+-- profiles.role is legacy and must not be a self-service privilege field.
+CREATE OR REPLACE FUNCTION public.protect_profiles_legacy_role()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+BEGIN
+  IF NEW.role IS DISTINCT FROM OLD.role
+     AND NOT public.is_hoi_admin(auth.uid(), ARRAY['owner','admin']) THEN
+    RAISE EXCEPTION 'Only House of Ichigo admins can change legacy profile roles';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS profiles_protect_legacy_role ON public.profiles;
+CREATE TRIGGER profiles_protect_legacy_role
+BEFORE UPDATE ON public.profiles
+FOR EACH ROW EXECUTE FUNCTION public.protect_profiles_legacy_role();
+
 ALTER TABLE public.hoi_admin_users ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "HOI admins can read admin users"
@@ -88,31 +109,31 @@ USING (public.is_hoi_admin(auth.uid()));
 DO $$
 BEGIN
   IF to_regclass('public.workspace_invitations') IS NOT NULL THEN
-    CREATE POLICY "HOI admins can read all workspace invitations"
-    ON public.workspace_invitations FOR SELECT
-    TO authenticated
-    USING (public.is_hoi_admin(auth.uid()));
+    EXECUTE 'CREATE POLICY "HOI admins can read all workspace invitations"
+      ON public.workspace_invitations FOR SELECT
+      TO authenticated
+      USING (public.is_hoi_admin(auth.uid()))';
   END IF;
 
   IF to_regclass('public.use_cases') IS NOT NULL THEN
-    CREATE POLICY "HOI admins can read all use cases"
-    ON public.use_cases FOR SELECT
-    TO authenticated
-    USING (public.is_hoi_admin(auth.uid()));
+    EXECUTE 'CREATE POLICY "HOI admins can read all use cases"
+      ON public.use_cases FOR SELECT
+      TO authenticated
+      USING (public.is_hoi_admin(auth.uid()))';
   END IF;
 
   IF to_regclass('public.use_case_approvals') IS NOT NULL THEN
-    CREATE POLICY "HOI admins can read all use case approvals"
-    ON public.use_case_approvals FOR SELECT
-    TO authenticated
-    USING (public.is_hoi_admin(auth.uid()));
+    EXECUTE 'CREATE POLICY "HOI admins can read all use case approvals"
+      ON public.use_case_approvals FOR SELECT
+      TO authenticated
+      USING (public.is_hoi_admin(auth.uid()))';
   END IF;
 
   IF to_regclass('public.governance_flags') IS NOT NULL THEN
-    CREATE POLICY "HOI admins can read all governance flags"
-    ON public.governance_flags FOR SELECT
-    TO authenticated
-    USING (public.is_hoi_admin(auth.uid()));
+    EXECUTE 'CREATE POLICY "HOI admins can read all governance flags"
+      ON public.governance_flags FOR SELECT
+      TO authenticated
+      USING (public.is_hoi_admin(auth.uid()))';
   END IF;
 END $$;
 

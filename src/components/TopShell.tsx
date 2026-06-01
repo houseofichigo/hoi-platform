@@ -25,6 +25,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useHoiAdmin } from "@/hooks/useHoiAdmin";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
 import { NotificationsBell } from "@/components/NotificationsBell";
@@ -124,7 +125,8 @@ export function buildPhases(): NavPhase[] {
 
 export function TopShell({ children }: { children: ReactNode }) {
   const { user, signOut } = useAuth();
-  const { workspace, loading, isAdmin } = useWorkspace();
+  const { workspace, loading } = useWorkspace();
+  const { isHoiAdmin } = useHoiAdmin();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -215,7 +217,7 @@ export function TopShell({ children }: { children: ReactNode }) {
                 onNavigate={navigateTo}
               />
             ))}
-            {isAdmin && (
+            {isHoiAdmin && (
               <Link
                 to="/admin/library"
                 className={navItemClass(pathname.includes("/admin"))}

@@ -20,6 +20,14 @@ import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as InviteAcceptRouteImport } from './routes/invite.accept'
 import { Route as AppWorkspaceSlugRouteImport } from './routes/app.$workspaceSlug'
 import { Route as AdminLibraryRouteImport } from './routes/admin.library'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminWorkspacesRouteImport } from './routes/admin.workspaces'
+import { Route as AdminContentRouteImport } from './routes/admin.content'
+import { Route as AdminBillingRouteImport } from './routes/admin.billing'
+import { Route as AdminSupportRouteImport } from './routes/admin.support'
+import { Route as AdminAuditRouteImport } from './routes/admin.audit'
+import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AppWorkspaceSlugIndexRouteImport } from './routes/app.$workspaceSlug.index'
 import { Route as AppOnboardingCreateWorkspaceRouteImport } from './routes/app.onboarding.create-workspace'
 import { Route as AppWorkspaceSlugSettingsRouteImport } from './routes/app.$workspaceSlug.settings'
@@ -104,6 +112,46 @@ const AppWorkspaceSlugRoute = AppWorkspaceSlugRouteImport.update({
 const AdminLibraryRoute = AdminLibraryRouteImport.update({
   id: '/admin/library',
   path: '/admin/library',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminWorkspacesRoute = AdminWorkspacesRouteImport.update({
+  id: '/admin/workspaces',
+  path: '/admin/workspaces',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminContentRoute = AdminContentRouteImport.update({
+  id: '/admin/content',
+  path: '/admin/content',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminBillingRoute = AdminBillingRouteImport.update({
+  id: '/admin/billing',
+  path: '/admin/billing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSupportRoute = AdminSupportRouteImport.update({
+  id: '/admin/support',
+  path: '/admin/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminAuditRoute = AdminAuditRouteImport.update({
+  id: '/admin/audit',
+  path: '/admin/audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/admin/settings',
+  path: '/admin/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppWorkspaceSlugIndexRoute = AppWorkspaceSlugIndexRouteImport.update({
@@ -291,7 +339,15 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/verify': typeof VerifyRoute
+  '/admin/': typeof AdminIndexRoute
+  '/admin/audit': typeof AdminAuditRoute
+  '/admin/billing': typeof AdminBillingRoute
+  '/admin/content': typeof AdminContentRoute
   '/admin/library': typeof AdminLibraryRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/support': typeof AdminSupportRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/admin/workspaces': typeof AdminWorkspacesRoute
   '/app/$workspaceSlug': typeof AppWorkspaceSlugRouteWithChildren
   '/invite/accept': typeof InviteAcceptRoute
   '/app/': typeof AppIndexRoute
@@ -333,7 +389,15 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/verify': typeof VerifyRoute
+  '/admin': typeof AdminIndexRoute
+  '/admin/audit': typeof AdminAuditRoute
+  '/admin/billing': typeof AdminBillingRoute
+  '/admin/content': typeof AdminContentRoute
   '/admin/library': typeof AdminLibraryRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/support': typeof AdminSupportRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/admin/workspaces': typeof AdminWorkspacesRoute
   '/invite/accept': typeof InviteAcceptRoute
   '/app': typeof AppIndexRoute
   '/app/$workspaceSlug/invite': typeof AppWorkspaceSlugInviteRoute
@@ -372,7 +436,15 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/verify': typeof VerifyRoute
+  '/admin/': typeof AdminIndexRoute
+  '/admin/audit': typeof AdminAuditRoute
+  '/admin/billing': typeof AdminBillingRoute
+  '/admin/content': typeof AdminContentRoute
   '/admin/library': typeof AdminLibraryRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/support': typeof AdminSupportRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/admin/workspaces': typeof AdminWorkspacesRoute
   '/app/$workspaceSlug': typeof AppWorkspaceSlugRouteWithChildren
   '/invite/accept': typeof InviteAcceptRoute
   '/app/': typeof AppIndexRoute
@@ -417,7 +489,15 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/verify'
+    | '/admin/'
+    | '/admin/audit'
+    | '/admin/billing'
+    | '/admin/content'
     | '/admin/library'
+    | '/admin/settings'
+    | '/admin/support'
+    | '/admin/users'
+    | '/admin/workspaces'
     | '/app/$workspaceSlug'
     | '/invite/accept'
     | '/app/'
@@ -459,7 +539,15 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/verify'
+    | '/admin'
+    | '/admin/audit'
+    | '/admin/billing'
+    | '/admin/content'
     | '/admin/library'
+    | '/admin/settings'
+    | '/admin/support'
+    | '/admin/users'
+    | '/admin/workspaces'
     | '/invite/accept'
     | '/app'
     | '/app/$workspaceSlug/invite'
@@ -497,7 +585,15 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/verify'
+    | '/admin/'
+    | '/admin/audit'
+    | '/admin/billing'
+    | '/admin/content'
     | '/admin/library'
+    | '/admin/settings'
+    | '/admin/support'
+    | '/admin/users'
+    | '/admin/workspaces'
     | '/app/$workspaceSlug'
     | '/invite/accept'
     | '/app/'
@@ -542,6 +638,14 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   VerifyRoute: typeof VerifyRoute
   AdminLibraryRoute: typeof AdminLibraryRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+  AdminAuditRoute: typeof AdminAuditRoute
+  AdminBillingRoute: typeof AdminBillingRoute
+  AdminContentRoute: typeof AdminContentRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminSupportRoute: typeof AdminSupportRoute
+  AdminUsersRoute: typeof AdminUsersRoute
+  AdminWorkspacesRoute: typeof AdminWorkspacesRoute
   InviteAcceptRoute: typeof InviteAcceptRoute
 }
 
@@ -622,6 +726,62 @@ declare module '@tanstack/react-router' {
       path: '/admin/library'
       fullPath: '/admin/library'
       preLoaderRoute: typeof AdminLibraryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/workspaces': {
+      id: '/admin/workspaces'
+      path: '/admin/workspaces'
+      fullPath: '/admin/workspaces'
+      preLoaderRoute: typeof AdminWorkspacesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/content': {
+      id: '/admin/content'
+      path: '/admin/content'
+      fullPath: '/admin/content'
+      preLoaderRoute: typeof AdminContentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/billing': {
+      id: '/admin/billing'
+      path: '/admin/billing'
+      fullPath: '/admin/billing'
+      preLoaderRoute: typeof AdminBillingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/support': {
+      id: '/admin/support'
+      path: '/admin/support'
+      fullPath: '/admin/support'
+      preLoaderRoute: typeof AdminSupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/audit': {
+      id: '/admin/audit'
+      path: '/admin/audit'
+      fullPath: '/admin/audit'
+      preLoaderRoute: typeof AdminAuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/admin/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app/$workspaceSlug/': {
@@ -984,6 +1144,14 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   VerifyRoute: VerifyRoute,
   AdminLibraryRoute: AdminLibraryRoute,
+  AdminIndexRoute: AdminIndexRoute,
+  AdminAuditRoute: AdminAuditRoute,
+  AdminBillingRoute: AdminBillingRoute,
+  AdminContentRoute: AdminContentRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
+  AdminSupportRoute: AdminSupportRoute,
+  AdminUsersRoute: AdminUsersRoute,
+  AdminWorkspacesRoute: AdminWorkspacesRoute,
   InviteAcceptRoute: InviteAcceptRoute,
 }
 export const routeTree = rootRouteImport

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json } from "@/integrations/supabase/types";
+import { fnv1aHash } from "@/lib/evidence/hash";
 
 type AnyObj = Record<string, unknown>;
 
@@ -229,6 +230,12 @@ export interface ScoreResult {
   reason_codes: string[];
   gate_statuses: Record<string, { status: "PASS" | "FAIL" | "NOT_ASSESSED"; checks: Record<string, boolean | "n/a"> }>;
   step_automation_map: Record<string, number>;
+}
+
+function scoreConfidence(result: ScoreResult): number {
+  const missingInputs = result.reason_codes.filter((code) => code.startsWith("MISSING_")).length;
+  const hardStops = result.reason_codes.filter((code) => HARD_STOP_CODES.includes(code)).length;
+  return clampScore(92 - missingInputs * 7 - hardStops * 5);
 }
 
 // ============================================================================
@@ -684,12 +691,22 @@ export const scoreUseCase = createServerFn({ method: "POST" })
       byBlock[c.block_number] = (c.responses ?? {}) as AnyObj;
     });
 
+    const rawInputs = {
+      block1: byBlock[1] ?? {},
+      block2: byBlock[2] ?? {},
+      block3: byBlock[3] ?? {},
+      block4: byBlock[4] ?? {},
+    };
+
     const result = computeScore({
       block1: byBlock[1] ?? {},
       block2: byBlock[2] ?? {},
       block3: byBlock[3] ?? {},
       block4: byBlock[4] ?? {},
     });
+    const scoringVersion = "2.2";
+    const inputHash = fnv1aHash(rawInputs);
+    const confidence = scoreConfidence(result);
 
     // ----- Persist via admin client (table is now write-locked from clients) -----
     const QUADRANT_MAP: Record<string, string> = {
@@ -719,7 +736,7 @@ export const scoreUseCase = createServerFn({ method: "POST" })
           classification: result.classification,
           complexity_score: result.complexity_score,
           complexity_tag: result.complexity_tag,
-          scoring_version: "2.2",
+          scoring_version: scoringVersion,
           reason_codes: result.reason_codes,
           gate_statuses: result.gate_statuses as Json,
           step_automation_map: result.step_automation_map as Json,
@@ -730,6 +747,29 @@ export const scoreUseCase = createServerFn({ method: "POST" })
       );
     if (upErr) throw new Error(upErr.message);
 
+    const officialOutput = {
+      ...result,
+      quadrant: mappedQuadrant,
+      scoringModelVersion: scoringVersion,
+      inputHash,
+      confidence,
+    };
+
+    const { error: snapshotErr } = await supabaseAdmin
+      .from("use_case_score_snapshots")
+      .insert({
+        workspace_id: uc.workspace_id,
+        use_case_id: data.use_case_id,
+        score_type: "use_case_priority",
+        scoring_model_version: scoringVersion,
+        input_hash: inputHash,
+        raw_inputs: rawInputs as Json,
+        computed_outputs: officialOutput as Json,
+        reason_codes: result.reason_codes,
+        confidence,
+        computed_by: userId,
+      } as never);
+    if (snapshotErr) throw new Error(snapshotErr.message);
 
     const { error: ucErr } = await supabaseAdmin
       .from("use_cases")
@@ -743,8 +783,7 @@ export const scoreUseCase = createServerFn({ method: "POST" })
           block4: byBlock[4] ?? {},
         } as Json,
         derived_scores: {
-          ...result,
-          quadrant: mappedQuadrant,
+          ...officialOutput,
         } as Json,
         capture_version: "2.2",
       })

@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import {
   useRoadmapEntries,
@@ -12,6 +14,7 @@ import {
 } from "@/hooks/useScaleRoadmap";
 import { governanceFlagsFullQO } from "@/lib/scale/queries";
 import { STAGE_LABEL, type RoadmapStage } from "@/lib/scale/types";
+import { generateEvidencePack } from "@/lib/scale/scale.functions";
 
 export const Route = createFileRoute("/app/$workspaceSlug/scale/")({
   component: ScaleOverview,
@@ -26,6 +29,7 @@ function ScaleOverview() {
   const { data: reviewCounts } = usePostPilotReviewCounts();
   const { data: auditMonth } = useAuditMonthCount();
   const { data: members = [] } = useWorkspaceMemberProfiles();
+  const exportEvidencePack = useServerFn(generateEvidencePack);
 
   const byStage = useMemo(() => {
     const m: Record<RoadmapStage, number> = {
@@ -52,74 +56,22 @@ function ScaleOverview() {
 
   if (!workspace) return null;
 
-  const downloadEvidencePack = () => {
-    const pack = {
-      generated_at: new Date().toISOString(),
-      workspace: {
-        id: workspace.id,
-        name: workspace.name,
-        slug: workspace.slug,
-      },
-      summary: {
-        roadmap_entries: entries.length,
-        open_or_in_progress_flags: flagSummary.open,
-        requires_action_flags: flagSummary.requires,
-        resolved_flags: flagSummary.resolved,
-        pilot_reviews_submitted: reviewCounts?.submitted ?? 0,
-        pilot_reviews_pending: reviewCounts?.pending ?? 0,
-        audit_events_this_month: auditMonth ?? 0,
-      },
-      roadmap: entries.map((entry) => ({
-        id: entry.id,
-        use_case_id: entry.use_case_id,
-        use_case_name: entry.use_cases?.name ?? null,
-        function: entry.use_cases?.function ?? null,
-        owner_id: entry.owner_id,
-        stage: entry.stage,
-        target_quarter: entry.target_quarter,
-        priority_score: entry.priority_score,
-        latest_score: entry.use_case_scores?.[0] ?? null,
-        governance_flags: entry.governance_flags,
-        post_pilot_reviews: entry.post_pilot_reviews,
-        created_at: entry.created_at,
-        updated_at: entry.updated_at,
-      })),
-      governance_flag_register: fullFlags.map((flag) => ({
-        id: flag.id,
-        use_case_id: flag.use_case_id,
-        use_case_name: flag.use_cases?.name ?? null,
-        roadmap_entry_id: flag.roadmap_entry_id,
-        roadmap_stage: flag.roadmap_entries?.stage ?? null,
-        rule_code: flag.rule_code,
-        rule_source: flag.rule_source,
-        severity: flag.severity,
-        status: flag.status,
-        assignee_id: flag.assignee_id,
-        resolution_notes: flag.resolution_notes,
-        created_at: flag.created_at,
-        updated_at: flag.updated_at,
-      })),
-      recent_stage_history: history,
-      evidence_checklist: [
-        "Assessment report and maturity score",
-        "Use-case portfolio and priority matrix",
-        "Official scoring reason codes",
-        "SDAIA/PDPL/NDMO/NCA/SAMA/SAIP governance flag register",
-        "Roadmap stage history and blocked transition events",
-        "Pilot review evidence before production promotion",
-        "Resolved or accepted-risk notes for deployment blockers",
-      ],
-    };
-
-    const blob = new Blob([JSON.stringify(pack, null, 2)], {
-      type: "application/json;charset=utf-8",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `ksa-evidence-pack-${workspace.slug}-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const downloadEvidencePack = async () => {
+    try {
+      const pack = await exportEvidencePack({ data: { workspaceId: workspace.id } });
+      const blob = new Blob([JSON.stringify(pack, null, 2)], {
+        type: "application/json;charset=utf-8",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ksa-evidence-pack-${workspace.slug}-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Evidence pack generated");
+    } catch (error) {
+      toast.error((error as Error).message);
+    }
   };
 
   const cards = [
