@@ -56,17 +56,27 @@ export function OnboardingChecklist() {
           params: { workspaceSlug: slug },
         });
         break;
-      case "invite":
       case "example":
         setSelectedExample(data.workedExample ?? "");
         setExampleOpen(true);
+        break;
+      case "invite":
+        navigate({
+          to: "/app/$workspaceSlug/invite",
+          params: { workspaceSlug: slug },
+        });
         break;
       case "tour":
         setTourOpen(true);
         break;
       case "library":
+        markLibraryVisited.mutate(undefined, {
+          onError: () => {
+            toast.error("We could not mark the library step complete yet.");
+          },
+        });
         navigate({
-          to: "/app/$workspaceSlug/build/library",
+          to: "/app/$workspaceSlug/discover",
           params: { workspaceSlug: slug },
         });
         break;
@@ -91,7 +101,7 @@ export function OnboardingChecklist() {
             }}
             className="text-[12px] font-medium text-slate transition-colors hover:text-terracotta"
           >
-            Dismiss
+            Hide checklist
           </button>
         </div>
 
@@ -256,19 +266,67 @@ export function OnboardingChecklist() {
 
       {/* Methodology Tour modal */}
       <Dialog open={tourOpen} onOpenChange={setTourOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Methodology tour</DialogTitle>
+            <DialogDescription>
+              A short orientation to the client journey from readiness through governed deployment.
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 text-[14px] text-graphite">
-            <p>
-              The full interactive tour will be released in the next platform update — a 3-minute
-              walkthrough of the four phases (Discover, Assess, Build, Scale), the three governance
-              gates, and the twelve modules that carry your worked example end-to-end.
-            </p>
-            <p>For now, you can mark this as seen so it doesn't appear on your checklist.</p>
+          <div className="grid gap-3 text-[13px] text-graphite sm:grid-cols-2">
+            {[
+              {
+                title: "Assess",
+                body: "Diagnose readiness, maturity, evidence confidence, and KSA governance posture.",
+              },
+              {
+                title: "Discover",
+                body: "Find examples, templates, and resources relevant to your sector and maturity.",
+              },
+              {
+                title: "Build",
+                body: "Map processes, score use cases, prioritize work, and surface blockers.",
+              },
+              {
+                title: "Deploy",
+                body: "Sequence the roadmap, review governance flags, and export evidence.",
+              },
+            ].map((step) => (
+              <div key={step.title} className="rounded-md border border-chalk bg-mist/50 p-3">
+                <p className="text-[13px] font-medium text-navy">{step.title}</p>
+                <p className="mt-1">{step.body}</p>
+              </div>
+            ))}
           </div>
           <DialogFooter>
+            <button
+              type="button"
+              onClick={() => completeTourAndNavigate("/app/$workspaceSlug/assess")}
+              className="btn-ichigo btn-ichigo-outline"
+            >
+              Start Assess
+            </button>
+            <button
+              type="button"
+              onClick={() => completeTourAndNavigate("/app/$workspaceSlug/discover")}
+              className="btn-ichigo btn-ichigo-outline"
+            >
+              Open Discover
+            </button>
+            <button
+              type="button"
+              onClick={() => completeTourAndNavigate("/app/$workspaceSlug/build/capture")}
+              className="btn-ichigo btn-ichigo-outline"
+            >
+              Capture use case
+            </button>
+            <button
+              type="button"
+              onClick={() => completeTourAndNavigate("/app/$workspaceSlug/scale")}
+              className="btn-ichigo btn-ichigo-outline"
+            >
+              View Deploy
+            </button>
             <button
               type="button"
               onClick={() => setTourOpen(false)}
@@ -297,4 +355,20 @@ export function OnboardingChecklist() {
       </Dialog>
     </>
   );
+
+  function completeTourAndNavigate(
+    to:
+      | "/app/$workspaceSlug/assess"
+      | "/app/$workspaceSlug/discover"
+      | "/app/$workspaceSlug/build/capture"
+      | "/app/$workspaceSlug/scale",
+  ) {
+    markTourCompleted.mutate(undefined, {
+      onSuccess: () => {
+        setTourOpen(false);
+        navigate({ to, params: { workspaceSlug: workspace.slug } });
+      },
+      onError: (e) => toast.error((e as Error).message),
+    });
+  }
 }

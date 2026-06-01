@@ -62,7 +62,17 @@ function SignupPage() {
         title={<>Check your <span className="accent-italic">email.</span></>}
         subtitle={`We sent a verification link to ${email}. Click it to activate your account.`}
       >
-        <Link to="/login" search={return_to ? { return_to } : undefined} className="text-[13px] text-azure hover:underline">
+        <Link
+          to="/login"
+          search={
+            return_to
+              ? { return_to, invited_email }
+              : invited_email
+                ? { invited_email }
+                : undefined
+          }
+          className="text-[13px] text-azure hover:underline"
+        >
           Back to log in
         </Link>
       </AuthCard>

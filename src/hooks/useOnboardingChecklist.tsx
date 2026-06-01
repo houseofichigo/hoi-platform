@@ -25,6 +25,10 @@ export interface ChecklistItem {
 
 export interface ChecklistState {
   shouldRender: boolean;
+  dismissedAt: string | null;
+  isFresh: boolean;
+  hasFewMembers: boolean;
+  isAdmin: boolean;
   firstName: string | null;
   workedExample: string | null;
   items: ChecklistItem[];
@@ -171,6 +175,10 @@ export function useOnboardingChecklist() {
 
       return {
         shouldRender,
+        dismissedAt: ws?.onboarding_dismissed_at ?? null,
+        isFresh,
+        hasFewMembers,
+        isAdmin,
         firstName,
         workedExample: ws?.worked_example ?? null,
         items,
@@ -253,5 +261,22 @@ export function useOnboardingMutations() {
     onSuccess: invalidate,
   });
 
-  return { updateWorkedExample, markTourCompleted, markLibraryVisited, dismissChecklist };
+  const restoreChecklist = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("workspaces")
+        .update({ onboarding_dismissed_at: null })
+        .eq("id", workspace!.id);
+      if (error) throw error;
+    },
+    onSuccess: invalidate,
+  });
+
+  return {
+    updateWorkedExample,
+    markTourCompleted,
+    markLibraryVisited,
+    dismissChecklist,
+    restoreChecklist,
+  };
 }

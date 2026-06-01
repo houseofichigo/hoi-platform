@@ -53,28 +53,37 @@ const STATUS_TONE: Record<string, string> = {
 };
 
 const SOURCE_LABEL: Record<string, string> = {
-  eu_ai_act: "EU AI Act",
-  gdpr: "GDPR",
+  sdaia: "SDAIA",
+  pdpl: "PDPL",
+  ndmo: "NDMO",
+  nca_sama: "NCA / SAMA",
+  saip: "SAIP",
   internal_policy: "Internal policy",
 };
 
 const RULE_EXPLANATION: Record<string, string> = {
-  EU_AI_ACT_HIGH_RISK:
-    "EU AI Act classifies this use case as high-risk based on its function and impact. Requires conformity assessment, technical documentation, and ongoing monitoring.",
-  ARTICLE_11_DOCUMENTATION:
-    "EU AI Act Article 11 requires complete technical documentation before the system is placed on the market.",
-  HITL_REQUIRED_ART14:
-    "EU AI Act Article 14 requires meaningful human oversight. A reviewer must be able to override or stop the system.",
-  TRANSPARENCY_ART13:
-    "EU AI Act Article 13 requires users to be informed they are interacting with an AI system and how it works.",
-  CONFORMITY_ASSESSMENT:
-    "A conformity assessment must be completed before deployment for high-risk systems.",
-  DPIA_REQUIRED:
-    "GDPR Article 35 requires a Data Protection Impact Assessment when personal data is combined with automated decisions or broad processing.",
-  DATA_MINIMISATION:
-    "GDPR Article 5 requires processing the minimum personal data needed. Review the data scope before scaling.",
-  RIGHT_TO_EXPLANATION:
-    "GDPR Article 22 requires meaningful explanations for automated decisions affecting individuals.",
+  SDAIA_HIGH_IMPACT_AI:
+    "This use case has high-impact AI signals. Confirm risk classification, human accountability, validation, and monitoring before deployment.",
+  SDAIA_TECHNICAL_DOCUMENTATION:
+    "Production deployment requires a technical file covering purpose, data, model behavior, human oversight, monitoring, and change controls.",
+  SDAIA_HUMAN_OVERSIGHT_REQUIRED:
+    "Meaningful human oversight is required. A reviewer must be able to approve, override, pause, or escalate the system output.",
+  SDAIA_TRANSPARENCY_REQUIRED:
+    "Customer- or citizen-facing AI requires clear disclosure, user instructions, and support paths.",
+  SDAIA_MODEL_VALIDATION_REQUIRED:
+    "High-impact AI must have validation evidence before launch, including test cases, accuracy thresholds, and failure handling.",
+  PDPL_PRIVACY_IMPACT_REVIEW:
+    "Personal data and automated processing require privacy review, lawful basis, notice, minimisation, retention, and data-subject handling.",
+  PDPL_DATA_MINIMISATION:
+    "Review the data scope and remove fields that are not necessary for the business purpose.",
+  PDPL_CROSS_BORDER_REVIEW:
+    "Personal data combined with foreign vendor access needs a cross-border transfer and processor review.",
+  NDMO_DATA_GOVERNANCE_REVIEW:
+    "Data classification, ownership, lineage, quality, and access controls need review before scaling.",
+  NCA_SAMA_SECURITY_REVIEW:
+    "Security review is required for sensitive data, external access, financial services, or critical infrastructure exposure.",
+  SAIP_IP_REVIEW:
+    "Review ownership and licensing for prompts, training data, vendor models, generated outputs, and reusable IP.",
   SECURITY_REVIEW_REQUIRED:
     "Internal policy requires a security review when foreign data access or multiple integrations are involved.",
   CHANGE_MANAGEMENT:
@@ -83,7 +92,7 @@ const RULE_EXPLANATION: Record<string, string> = {
 
 const STATUSES = ["open", "in_progress", "resolved", "accepted_risk", "not_applicable"] as const;
 const SEVERITIES = ["hard_stop", "requires_action", "advisory"] as const;
-const SOURCES = ["eu_ai_act", "gdpr", "internal_policy"] as const;
+const SOURCES = ["sdaia", "pdpl", "ndmo", "nca_sama", "saip", "internal_policy"] as const;
 
 const ALLOWED_FLAG_TRANSITIONS: Record<string, string[]> = {
   open: ["in_progress", "resolved", "accepted_risk", "not_applicable"],
@@ -181,7 +190,7 @@ function GovernancePage() {
             Governance <em className="text-terracotta not-italic font-display italic">flags.</em>
           </h2>
           <p className="text-[13px] text-graphite mt-1">
-            Track compliance, risk, and operating-policy flags across the deployment roadmap.
+            Track SDAIA, PDPL, NDMO, NCA/SAMA, SAIP, and operating-policy flags across the deployment roadmap.
           </p>
         </div>
         <div className="flex items-center gap-2">

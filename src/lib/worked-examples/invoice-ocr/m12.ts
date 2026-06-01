@@ -61,7 +61,7 @@ export const M12_OCR_CONTENT = {
     title: "Capability gap analysis",
     why: "Roadmaps fail at the boundary between portfolio ambition and organisational capacity. Gaps in people, tools, partnerships, and governance are what slip the plan — name them and assign them now.",
     example:
-      "People: no second AP lead trained on the assistant. Tools: vector store decision still open for legal corpus. Partnerships: deployment partner for accounting integration not under contract. Governance: EU AI Act Article 11 documentation owner not named.",
+      "People: no second AP lead trained on the assistant. Tools: vector store decision still open for legal corpus. Partnerships: deployment partner for accounting integration not under contract. Governance: SDAIA technical documentation owner not named.",
     whatToNotice: [
       "Every gap has a named owner and a next action — not a category lead",
       "Partnerships and governance are first-class, not afterthoughts",
@@ -75,7 +75,7 @@ export const M12_OCR_CONTENT = {
     title: "Executive scorecard",
     why: "The sponsor needs one page to track program health across investment, risk, governance, and impact. The scorecard is the standing artifact between the roadmap and the next review.",
     example:
-      "Live systems: 1. Pilots running: 2. Gate status: G2 passed for triage, G3 pending for risk screening. Forecast spend vs. M08 model: -5%. HITL load: stable. EU AI Act docs current: yes.",
+      "Live systems: 1. Pilots running: 2. Gate status: G2 passed for triage, G3 pending for risk screening. Forecast spend vs. M08 model: -5%. HITL load: stable. SDAIA AI governance docs current: yes.",
     whatToNotice: [
       "Every metric has a target — not a wish",
       "Metrics span investment, risk, governance, and outcome",
@@ -89,7 +89,7 @@ export const M12_OCR_CONTENT = {
     title: "Executive summary and next pilot cycle",
     why: "The summary is what the sponsor signs. It restates the portfolio bet, the roadmap, the gaps being closed, and the go/no-go criteria for the next pilot.",
     example:
-      "We will scale invoice OCR, launch two new pilots (expense triage, supplier risk), and prepare contract clause extraction. Total ask: €240k across 12 months. Stop conditions: accuracy regression on OCR, EU AI Act docs not closed by Q2, partnership unsigned by Q3.",
+      "We will scale invoice OCR, launch two new pilots (expense triage, supplier risk), and prepare contract clause extraction. Total ask: SAR 960k across 12 months. Stop conditions: accuracy regression on OCR, SDAIA AI governance docs not closed by Q2, partnership unsigned by Q3.",
     whatToNotice: [
       "The summary names the bet, the price, and the stop conditions on one page",
       "Next-pilot criteria are explicit — sponsor knows when to greenlight",
@@ -143,7 +143,7 @@ export const M12_OCR_CONTENT = {
       id: "governance",
       label: "Governance",
       question: "Which routines, approvals, or documentation must be in place?",
-      exampleGap: "EU AI Act Article 11 documentation owner; quarterly portfolio re-scoring cadence; incident review routine.",
+      exampleGap: "SDAIA technical documentation owner; quarterly portfolio re-scoring cadence; incident review routine.",
     },
   ] as const satisfies readonly CapabilityGap[],
 
@@ -187,7 +187,7 @@ export const M12_OCR_CONTENT = {
     {
       id: "governance_docs",
       label: "Governance docs current",
-      whyItMatters: "EU AI Act and internal docs current means an audit can be answered this week.",
+      whyItMatters: "SDAIA AI governance and internal docs current means an audit can be answered this week.",
       suggestedTarget: "100% of live systems have a current system card and operating playbook.",
     },
     {
@@ -223,7 +223,7 @@ export const M12_OCR_CONTENT = {
     {
       id: "gov_ready",
       label: "Governance pre-cleared",
-      detail: "Risk, residency, and EU AI Act posture pre-cleared by the governance owner.",
+      detail: "Risk, residency, and SDAIA AI governance posture pre-cleared by the governance owner.",
     },
     {
       id: "rollback",
@@ -269,7 +269,7 @@ export function getM12StrategyScaffold(
     `· People — second AP lead trained on the assistant; backup assistant owner; analyst for monitoring review.\n` +
     `· Tools — monitoring dashboard live; vector store decision for next-pilot corpus; vendor opt-out confirmation.\n` +
     `· Partnerships — deployment partner under contract for ${accounting} integration; legal review firm for next-pilot scope.\n` +
-    `· Governance — EU AI Act Article 11 owner named; quarterly portfolio re-scoring cadence agreed; incident review routine live.`;
+    `· Governance — SDAIA AI governance technical documentation owner named; quarterly portfolio re-scoring cadence agreed; incident review routine live.`;
 
   const executiveScorecard =
     `Executive scorecard for ${company} AI program:\n` +
@@ -286,7 +286,7 @@ export function getM12StrategyScaffold(
     `1. Named owner with explicit time allocation.\n` +
     `2. Current eight-pillar score; no critical reason-code blockers.\n` +
     `3. Data layer inventoried to M02 standard for ${vat}.\n` +
-    `4. Governance pre-cleared (risk, residency, EU AI Act).\n` +
+    `4. Governance pre-cleared (risk, residency, SDAIA AI governance).\n` +
     `5. Rollback path written before kickoff.\n` +
     `6. Budget locked within M08 envelope.`;
 
@@ -298,10 +298,10 @@ export function getM12StrategyScaffold(
     `Next: launch the highest-scoring M09 candidate as a pilot and bring a second to Gate 2. ` +
     `Later: prepare deferred candidates by closing governance and data gaps.\n\n` +
     `Gaps being closed. A second trained AP lead; a monitoring dashboard live; a deployment ` +
-    `partner under contract; an EU AI Act Article 11 documentation owner named; a quarterly portfolio ` +
+    `partner under contract; an SDAIA technical documentation owner named; a quarterly portfolio ` +
     `re-scoring cadence agreed.\n\n` +
     `Stop conditions. Accuracy regression on the live system breaches the M11 stop tier; ` +
-    `EU AI Act documentation not closed by the agreed quarter; deployment partner not under contract by Q3; ` +
+    `SDAIA AI governance documentation not closed by the agreed quarter; deployment partner not under contract by Q3; ` +
     `cost overrun > 30% vs. the M08 cost model.\n\n` +
     `Review cadence. Monthly scorecard to sponsor; quarterly portfolio re-score against M09; annual ` +
     `roadmap re-issue. The roadmap is the temporal projection of the portfolio — it changes when the portfolio changes.`;

@@ -240,7 +240,7 @@ export const M06_OCR_CONTENT = {
     },
     {
       id: "policy_conflict",
-      trigger: "Validation hits a VAT/GDPR/internal-policy rule from KB02.",
+      trigger: "Validation hits a VAT/PDPL/internal-policy rule from KB02.",
       agentMustDo: "Stop. Cite the rule and the conflicting field.",
       humanMustDecide: "Apply the rule, override with a written reason, or escalate.",
     },

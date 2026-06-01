@@ -36,20 +36,17 @@ const SOFTWARE_GROUPS = [
 const INVOICE_VOLUMES = ["<50", "50-200", "200-1000", "1000-5000", "5000+"] as const;
 
 const VAT_PRESETS = [
-  "France standard 20% only",
-  "France standard 20% + reduced 5.5% (food/agriculture)",
-  "France standard 20% + reduced 10% (services/renovation)",
-  "France standard 20% + intra-EU reverse charge",
-  "France standard 20% + import VAT (non-EU suppliers)",
-  "France standard 20% + reduced 5.5% + import VAT",
-  "EU multi-country (OSS regime)",
-  "VAT-exempt (Article 293 B — micro-enterprise)",
-  "Mixed — multiple rates and regimes",
+  "Saudi Arabia standard 15% only",
+  "Saudi Arabia standard 15% + ZATCA e-invoicing controls",
+  "Saudi Arabia standard 15% + GCC supplier flow",
+  "Saudi Arabia standard 15% + offshore supplier review",
+  "VAT-exempt or zero-rated supplier flow",
+  "Mixed — multiple rates, exemptions, and regimes",
 ] as const;
 
 const CURRENCIES = [
-  "EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD", "MAD", "TND", "SAR",
-  "AED", "QAR", "XOF", "SEK", "DKK", "NOK", "PLN", "CZK", "RON", "CNY",
+  "SAR", "USD", "AED", "QAR", "KWD", "BHD", "OMR", "EUR", "GBP", "CHF",
+  "JPY", "CAD", "AUD", "MAD", "TND", "XOF", "SEK", "DKK", "NOK", "CNY",
   "SGD", "HKD", "Other",
 ] as const;
 
@@ -124,7 +121,7 @@ export const INVOICE_OCR_PROFILE_DEFAULTS = {
   accounting_software: "Pennylane",
   invoice_volume: "50-200",
   vat_context: "",
-  currencies: ["EUR"],
+  currencies: ["SAR"],
   products: [],
   supplier_categories: [],
 } as const;

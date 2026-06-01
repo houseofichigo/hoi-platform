@@ -71,7 +71,7 @@ export const M10_OCR_CONTENT = {
 
   step2: {
     title: "System card + operating playbook",
-    why: "The system card is the EU AI Act Article 11 surface: purpose, users, data, risks, oversight. The playbook is what the AP/finance team actually opens on Monday morning.",
+    why: "The system card is the SDAIA AI governance technical documentation surface: purpose, users, data, risks, oversight. The playbook is what the AP/finance team actually opens on Monday morning.",
     example:
       "System card: intended purpose, named users, data sources, model/assistant/agent behaviour, oversight, risks, monitoring, change management. Playbook: daily queue check, weekly accuracy review, monthly cost review, incident response.",
     whatToNotice: [
@@ -79,7 +79,7 @@ export const M10_OCR_CONTENT = {
       "Tacit moves to explicit: every implicit step becomes a routine",
       "Each routine has an escalation rule, not just an action",
     ],
-    produces: "A system card aligned to Article 11 and a 2-3 page operator playbook",
+    produces: "A system card aligned to technical documentation and a 2-3 page operator playbook",
     nextLabel: "Step 3 — five-stage handoff",
   },
 
@@ -295,7 +295,7 @@ export const M10_OCR_CONTENT = {
   ] as const satisfies readonly HandoffStage[],
 
   methodNote:
-    "EU AI Act Article 11 expects technical documentation that lets a regulator reconstruct the system. The playbook is the operator's mirror of that document — same facts, written for a Monday morning.",
+    "Saudi-market governance expects technical documentation that lets an accountable reviewer reconstruct the system: purpose, data, controls, validation, oversight, monitoring, and PDPL/NDMO posture. The playbook is the operator's mirror of that document - same facts, written for a Monday morning.",
 };
 
 // ── Profile-driven scaffold ────────────────────────────────────────────────

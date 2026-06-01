@@ -9,134 +9,141 @@ function severityOf(flags: ReturnType<typeof deriveGovernanceFlags>, code: strin
   return flags.find((f) => f.rule_code === code)?.severity;
 }
 
-describe("deriveGovernanceFlags · EU AI Act", () => {
-  it("EU_AI_ACT_HIGH_RISK as hard_stop for finance + material impact", () => {
+describe("deriveGovernanceFlags · SDAIA", () => {
+  it("SDAIA_HIGH_IMPACT_AI as hard_stop for finance + material impact", () => {
     const f = deriveGovernanceFlags({
       useCaseFunction: "finance",
       capture: { impact_if_failure_choice: "critical" },
     });
-    expect(severityOf(f, "EU_AI_ACT_HIGH_RISK")).toBe("hard_stop");
+    expect(severityOf(f, "SDAIA_HIGH_IMPACT_AI")).toBe("hard_stop");
   });
 
-  it("EU_AI_ACT_HIGH_RISK as requires_action for partial match", () => {
+  it("SDAIA_HIGH_IMPACT_AI as requires_action for partial match", () => {
     const f = deriveGovernanceFlags({
       useCaseFunction: "finance",
       capture: {},
     });
-    expect(severityOf(f, "EU_AI_ACT_HIGH_RISK")).toBe("requires_action");
+    expect(severityOf(f, "SDAIA_HIGH_IMPACT_AI")).toBe("requires_action");
   });
 
-  it("CONFORMITY_ASSESSMENT only when EU high-risk is hard_stop", () => {
+  it("SDAIA_MODEL_VALIDATION_REQUIRED only when high-impact AI is hard_stop", () => {
     const high = deriveGovernanceFlags({
       useCaseFunction: "finance",
       capture: { impact_if_failure_choice: "critical" },
     });
-    expect(codesOf(high)).toContain("CONFORMITY_ASSESSMENT");
+    expect(codesOf(high)).toContain("SDAIA_MODEL_VALIDATION_REQUIRED");
 
     const partial = deriveGovernanceFlags({
       useCaseFunction: "finance",
       capture: {},
     });
-    expect(codesOf(partial)).not.toContain("CONFORMITY_ASSESSMENT");
+    expect(codesOf(partial)).not.toContain("SDAIA_MODEL_VALIDATION_REQUIRED");
   });
 
-  it("HITL_REQUIRED_ART14 fires from reason code OR capture", () => {
+  it("SDAIA_HUMAN_OVERSIGHT_REQUIRED fires from reason code OR capture", () => {
     const fromCode = deriveGovernanceFlags({
       capture: {},
       reasonCodes: ["HITL_MANDATORY"],
     });
-    expect(codesOf(fromCode)).toContain("HITL_REQUIRED_ART14");
+    expect(codesOf(fromCode)).toContain("SDAIA_HUMAN_OVERSIGHT_REQUIRED");
 
     const fromCapture = deriveGovernanceFlags({
       capture: { hitl_decisions: "mandatory" },
     });
-    expect(codesOf(fromCapture)).toContain("HITL_REQUIRED_ART14");
+    expect(codesOf(fromCapture)).toContain("SDAIA_HUMAN_OVERSIGHT_REQUIRED");
   });
 
-  it("TRANSPARENCY_ART13 fires from customer_facing_choice", () => {
+  it("SDAIA_TRANSPARENCY_REQUIRED fires from customer_facing_choice", () => {
     const f = deriveGovernanceFlags({
       capture: { customer_facing_choice: "yes" },
     });
-    expect(codesOf(f)).toContain("TRANSPARENCY_ART13");
+    expect(codesOf(f)).toContain("SDAIA_TRANSPARENCY_REQUIRED");
   });
 
-  it("TRANSPARENCY_ART13 fires from target_domain=customer_facing", () => {
+  it("SDAIA_TRANSPARENCY_REQUIRED fires from target_domain=customer_facing", () => {
     const f = deriveGovernanceFlags({
       capture: { target_domain: "customer_facing" },
     });
-    expect(codesOf(f)).toContain("TRANSPARENCY_ART13");
+    expect(codesOf(f)).toContain("SDAIA_TRANSPARENCY_REQUIRED");
   });
 
-  it("TRANSPARENCY_ART13 does NOT fire for internal-only", () => {
+  it("SDAIA_TRANSPARENCY_REQUIRED does NOT fire for internal-only", () => {
     const f = deriveGovernanceFlags({
       capture: { target_domain: "back_office" },
     });
-    expect(codesOf(f)).not.toContain("TRANSPARENCY_ART13");
+    expect(codesOf(f)).not.toContain("SDAIA_TRANSPARENCY_REQUIRED");
   });
 
-  it("ARTICLE_11_DOCUMENTATION fires only when stage=production", () => {
+  it("SDAIA_TECHNICAL_DOCUMENTATION fires only when stage=production", () => {
     expect(
       codesOf(deriveGovernanceFlags({ capture: {}, stage: "production" })),
-    ).toContain("ARTICLE_11_DOCUMENTATION");
+    ).toContain("SDAIA_TECHNICAL_DOCUMENTATION");
     expect(
       codesOf(deriveGovernanceFlags({ capture: {}, stage: "pilot" })),
-    ).not.toContain("ARTICLE_11_DOCUMENTATION");
+    ).not.toContain("SDAIA_TECHNICAL_DOCUMENTATION");
     expect(codesOf(deriveGovernanceFlags({ capture: {} }))).not.toContain(
-      "ARTICLE_11_DOCUMENTATION",
+      "SDAIA_TECHNICAL_DOCUMENTATION",
     );
   });
 });
 
-describe("deriveGovernanceFlags · GDPR", () => {
-  it("DPIA_REQUIRED requires personal data AND (automated decisions OR broad processing)", () => {
+describe("deriveGovernanceFlags · PDPL / NDMO", () => {
+  it("PDPL_PRIVACY_IMPACT_REVIEW requires personal data AND (automated decisions OR broad processing)", () => {
     const both = deriveGovernanceFlags({
       capture: {
         personal_data_choice: "yes",
         decision_logic_type: "model_based",
       },
     });
-    expect(codesOf(both)).toContain("DPIA_REQUIRED");
+    expect(codesOf(both)).toContain("PDPL_PRIVACY_IMPACT_REVIEW");
 
     const personalOnly = deriveGovernanceFlags({
       capture: { personal_data_choice: "yes" },
     });
-    expect(codesOf(personalOnly)).not.toContain("DPIA_REQUIRED");
+    expect(codesOf(personalOnly)).not.toContain("PDPL_PRIVACY_IMPACT_REVIEW");
 
     const automatedOnly = deriveGovernanceFlags({
       capture: { decision_logic_type: "model_based" },
     });
-    expect(codesOf(automatedOnly)).not.toContain("DPIA_REQUIRED");
+    expect(codesOf(automatedOnly)).not.toContain("PDPL_PRIVACY_IMPACT_REVIEW");
   });
 
-  it("DATA_MINIMISATION fires on broad scope", () => {
+  it("PDPL_DATA_MINIMISATION fires on broad scope", () => {
     const f = deriveGovernanceFlags({
       capture: { scope_chips: ["a", "b", "c", "d"] },
     });
-    expect(severityOf(f, "DATA_MINIMISATION")).toBe("advisory");
+    expect(severityOf(f, "PDPL_DATA_MINIMISATION")).toBe("advisory");
   });
 
-  it("RIGHT_TO_EXPLANATION fires from explicit signal", () => {
+  it("PDPL_PRIVACY_IMPACT_REVIEW fires from explicit automated-decision signal", () => {
     const f = deriveGovernanceFlags({
       capture: { automated_decisions_affect_individuals_choice: "yes" },
     });
-    expect(codesOf(f)).toContain("RIGHT_TO_EXPLANATION");
+    expect(codesOf(f)).toContain("PDPL_PRIVACY_IMPACT_REVIEW");
   });
 
-  it("RIGHT_TO_EXPLANATION inferred from personal data + model-based decisions", () => {
+  it("PDPL_PRIVACY_IMPACT_REVIEW inferred from personal data + model-based decisions", () => {
     const f = deriveGovernanceFlags({
       capture: {
         personal_data_choice: "yes",
         decision_logic_type: "model_based",
       },
     });
-    expect(codesOf(f)).toContain("RIGHT_TO_EXPLANATION");
+    expect(codesOf(f)).toContain("PDPL_PRIVACY_IMPACT_REVIEW");
   });
 
-  it("RIGHT_TO_EXPLANATION does NOT fire without personal data or signal", () => {
+  it("PDPL_PRIVACY_IMPACT_REVIEW does NOT fire without personal data or signal", () => {
     const f = deriveGovernanceFlags({
       capture: { decision_logic_type: "model_based" },
     });
-    expect(codesOf(f)).not.toContain("RIGHT_TO_EXPLANATION");
+    expect(codesOf(f)).not.toContain("PDPL_PRIVACY_IMPACT_REVIEW");
+  });
+
+  it("NDMO_DATA_GOVERNANCE_REVIEW fires on restricted data", () => {
+    const f = deriveGovernanceFlags({
+      capture: { classification: "restricted" },
+    });
+    expect(severityOf(f, "NDMO_DATA_GOVERNANCE_REVIEW")).toBe("requires_action");
   });
 });
 
@@ -146,6 +153,7 @@ describe("deriveGovernanceFlags · Internal policy", () => {
       capture: { foreign_vendor_choice: "yes" },
     });
     expect(codesOf(f)).toContain("SECURITY_REVIEW_REQUIRED");
+    expect(codesOf(f)).toContain("NCA_SAMA_SECURITY_REVIEW");
   });
 
   it("SECURITY_REVIEW_REQUIRED fires from 3+ integrations", () => {
@@ -208,7 +216,7 @@ describe("deriveGovernanceFlags · idempotence + integration", () => {
     expect(first).toEqual(second);
   });
 
-  it("a maximal trigger set produces all 10 rule codes", () => {
+  it("a maximal trigger set produces the expected KSA rule codes", () => {
     const f = deriveGovernanceFlags({
       useCaseFunction: "finance",
       capture: {
@@ -218,6 +226,7 @@ describe("deriveGovernanceFlags · idempotence + integration", () => {
         automated_decisions_affect_individuals_choice: "yes",
         scope_chips: ["a", "b", "c", "d"],
         impact_if_failure_choice: "critical",
+        classification: "restricted",
         foreign_vendor_choice: "yes",
       },
       reasonCodes: ["HITL_MANDATORY"],
@@ -225,14 +234,16 @@ describe("deriveGovernanceFlags · idempotence + integration", () => {
       fromStage: "pilot",
     });
     const codes = new Set(codesOf(f));
-    expect(codes.has("EU_AI_ACT_HIGH_RISK")).toBe(true);
-    expect(codes.has("CONFORMITY_ASSESSMENT")).toBe(true);
-    expect(codes.has("HITL_REQUIRED_ART14")).toBe(true);
-    expect(codes.has("TRANSPARENCY_ART13")).toBe(true);
-    expect(codes.has("ARTICLE_11_DOCUMENTATION")).toBe(true);
-    expect(codes.has("DPIA_REQUIRED")).toBe(true);
-    expect(codes.has("DATA_MINIMISATION")).toBe(true);
-    expect(codes.has("RIGHT_TO_EXPLANATION")).toBe(true);
+    expect(codes.has("SDAIA_HIGH_IMPACT_AI")).toBe(true);
+    expect(codes.has("SDAIA_MODEL_VALIDATION_REQUIRED")).toBe(true);
+    expect(codes.has("SDAIA_HUMAN_OVERSIGHT_REQUIRED")).toBe(true);
+    expect(codes.has("SDAIA_TRANSPARENCY_REQUIRED")).toBe(true);
+    expect(codes.has("SDAIA_TECHNICAL_DOCUMENTATION")).toBe(true);
+    expect(codes.has("PDPL_PRIVACY_IMPACT_REVIEW")).toBe(true);
+    expect(codes.has("PDPL_DATA_MINIMISATION")).toBe(true);
+    expect(codes.has("PDPL_CROSS_BORDER_REVIEW")).toBe(true);
+    expect(codes.has("NDMO_DATA_GOVERNANCE_REVIEW")).toBe(true);
+    expect(codes.has("NCA_SAMA_SECURITY_REVIEW")).toBe(true);
     expect(codes.has("SECURITY_REVIEW_REQUIRED")).toBe(true);
     expect(codes.has("CHANGE_MANAGEMENT")).toBe(true);
   });

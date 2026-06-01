@@ -4,13 +4,14 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthCard } from "@/components/AuthCard";
 
-type Search = { reset?: "success"; return_to?: string };
+type Search = { reset?: "success"; return_to?: string; invited_email?: string };
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
   validateSearch: (s: Record<string, unknown>): Search => ({
     reset: s.reset === "success" ? "success" : undefined,
     return_to: typeof s.return_to === "string" ? s.return_to : undefined,
+    invited_email: typeof s.invited_email === "string" ? s.invited_email : undefined,
   }),
 });
 
@@ -22,8 +23,8 @@ function safeReturnTo(value: string | undefined): string {
 function LoginPage() {
   const { signIn, user } = useAuth();
   const navigate = useNavigate();
-  const { reset, return_to } = Route.useSearch();
-  const [email, setEmail] = useState("");
+  const { reset, return_to, invited_email } = Route.useSearch();
+  const [email, setEmail] = useState(invited_email ?? "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -57,7 +58,11 @@ function LoginPage() {
     <AuthCard
       eyebrow="Log in"
       title={<>Welcome <span className="accent-italic">back.</span></>}
-      subtitle="Continue where you left off."
+      subtitle={
+        invited_email
+          ? `Log in as ${invited_email} to accept your workspace invitation.`
+          : "Continue where you left off."
+      }
     >
       <form onSubmit={onSubmit} className="space-y-4">
         <label className="block">
@@ -69,6 +74,11 @@ function LoginPage() {
             required
             className="input-ichigo mt-1.5"
           />
+          {invited_email && email.toLowerCase() !== invited_email.toLowerCase() && (
+            <p className="mt-1.5 text-[12px] text-terracotta">
+              This invitation was sent to {invited_email}. Use that email to join the workspace.
+            </p>
+          )}
         </label>
         <label className="block">
           <span className="text-[13px] font-medium text-navy">Password</span>
@@ -87,7 +97,19 @@ function LoginPage() {
       </form>
       <div className="mt-6 flex items-center justify-between text-[13px]">
         <Link to="/forgot-password" className="text-azure hover:underline">Forgot password?</Link>
-        <Link to="/signup" search={return_to ? { return_to } : undefined} className="text-azure hover:underline">Sign up</Link>
+        <Link
+          to="/signup"
+          search={
+            return_to
+              ? { return_to, invited_email }
+              : invited_email
+                ? { invited_email }
+                : undefined
+          }
+          className="text-azure hover:underline"
+        >
+          Sign up
+        </Link>
       </div>
     </AuthCard>
   );

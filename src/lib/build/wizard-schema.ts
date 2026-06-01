@@ -156,6 +156,18 @@ export const STEPS: StepDef[] = [
           { value: "rnd", label: "R&D" },
         ],
       },
+      {
+        key: "customer_facing_choice",
+        label: "Will users, customers, citizens, or partners directly see the AI output?",
+        kind: "radio",
+        required: true,
+        cols: 2,
+        helper: "This drives SDAIA transparency and user-disclosure checks.",
+        options: [
+          { value: "yes", label: "Yes" },
+          { value: "no", label: "No" },
+        ],
+      },
       { key: "business_objectives", label: "Business objectives", kind: "checkbox-grid", required: true, cols: 2, minSelect: 1, maxSelect: 3, options: businessObjectives },
       {
         key: "problems_today",
@@ -314,10 +326,35 @@ export const STEPS: StepDef[] = [
       },
       {
         key: "foreign_vendor_access",
-        label: "Will a non-EU or foreign vendor access data?",
+        label: "Will an offshore or external vendor access data?",
         kind: "radio",
         required: true,
         cols: 2,
+        helper: "This drives PDPL transfer review and NCA/SAMA security review checks.",
+        options: [
+          { value: "yes", label: "Yes" },
+          { value: "no", label: "No" },
+        ],
+      },
+      {
+        key: "training_data_origin",
+        label: "Training or reference data origin",
+        kind: "radio-cards",
+        required: true,
+        options: [
+          { value: "internal", label: "Internal data only" },
+          { value: "licensed", label: "Licensed third-party data" },
+          { value: "third_party", label: "Third-party or public data", advanced: true },
+          { value: "unknown", label: "Unknown", advanced: true },
+        ],
+      },
+      {
+        key: "vendor_model_reuse",
+        label: "Will the solution reuse a vendor model, prompt pack, or generated asset?",
+        kind: "radio",
+        required: true,
+        cols: 2,
+        helper: "This drives SAIP IP review and vendor evidence checks.",
         options: [
           { value: "yes", label: "Yes" },
           { value: "no", label: "No" },
@@ -367,8 +404,22 @@ export const STEPS: StepDef[] = [
         required: true,
         options: [
           { value: "rules", label: "Mostly rules" },
+          { value: "model_based", label: "Model-based recommendation", advanced: true },
           { value: "mixed", label: "Rules plus judgment" },
+          { value: "agentic", label: "Agentic or autonomous workflow", advanced: true },
           { value: "judgment", label: "Mostly human judgment" },
+        ],
+      },
+      {
+        key: "automated_decisions_affect_individuals_choice",
+        label: "Could automated outputs affect an individual, customer, employee, or supplier?",
+        kind: "radio",
+        required: true,
+        cols: 2,
+        helper: "This drives PDPL privacy-impact review and human oversight checks.",
+        options: [
+          { value: "yes", label: "Yes" },
+          { value: "no", label: "No" },
         ],
       },
       {

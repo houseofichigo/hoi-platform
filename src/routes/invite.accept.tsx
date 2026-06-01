@@ -33,7 +33,15 @@ function AcceptInvitePage() {
 
   const invitation = inviteQuery.data;
   const isExpired = invitation && new Date(invitation.expires_at).getTime() <= Date.now();
-  const isInvalid = !invitation || invitation.status !== "pending" || isExpired;
+  const unavailableReason = !invitation
+    ? "missing"
+    : isExpired
+      ? "expired"
+      : invitation.status === "accepted"
+        ? "accepted"
+        : invitation.status !== "pending"
+          ? "unavailable"
+          : null;
   const emailMatches =
     user?.email && invitation && user.email.toLowerCase() === invitation.email.toLowerCase();
 
@@ -60,12 +68,22 @@ function AcceptInvitePage() {
     );
   }
 
-  if (isInvalid) {
+  if (unavailableReason) {
+    const title =
+      unavailableReason === "expired"
+        ? "Invitation expired."
+        : unavailableReason === "accepted"
+          ? "Invitation already accepted."
+          : "Invitation unavailable.";
+    const body =
+      unavailableReason === "expired"
+        ? "This invitation has expired. Ask the workspace owner to send a new invite."
+        : unavailableReason === "accepted"
+          ? "This invitation has already been used. Log in to continue to your workspace."
+          : "This invitation is invalid or has been revoked. Contact the workspace owner for a new invite.";
     return (
-      <AuthCard eyebrow="Invitation" title={<>Invitation <span className="accent-italic">unavailable.</span></>}>
-        <p className="text-[14px] text-graphite">
-          This invitation is invalid, expired, or has already been used. Contact the workspace owner for a new invite.
-        </p>
+      <AuthCard eyebrow="Invitation" title={<>{title}</>}>
+        <p className="text-[14px] text-graphite">{body}</p>
         <Link to="/login" className="mt-4 inline-block text-[13px] text-azure hover:underline">Go to login</Link>
       </AuthCard>
     );
@@ -136,7 +154,7 @@ function AcceptInvitePage() {
         <div className="mt-6 space-y-3">
           <Link
             to="/login"
-            search={{ return_to: returnTo }}
+            search={{ invited_email: invitation.email, return_to: returnTo }}
             className="btn-ichigo btn-ichigo-primary block w-full text-center"
           >
             I already have an account

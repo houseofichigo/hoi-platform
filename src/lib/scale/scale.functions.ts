@@ -178,9 +178,11 @@ export type MoveResult =
         | "hard_stop_blocked"
         | "requires_action_unacknowledged"
         | "pilot_review_required"
+        | "stage_gate_failed"
         | "no_change";
       message: string;
       blockingFlags?: Array<{ id: string; severity: string }>;
+      gateErrors?: string[];
     };
 
 export const moveRoadmapEntry = createServerFn({ method: "POST" })
@@ -228,6 +230,56 @@ export const moveRoadmapEntry = createServerFn({ method: "POST" })
     const requiresAction = (openFlags ?? []).filter((f) => f.severity === "requires_action");
 
     const useCaseName = entry.use_cases?.name ?? "Use case";
+
+    const { data: latestScore } = await supabase
+      .from("use_case_scores")
+      .select("id, classification, priority, delivery_readiness")
+      .eq("use_case_id", entry.use_case_id)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const stageGateErrors = validateRoadmapStageGate({
+      fromStage,
+      toStage,
+      ownerId: entry.owner_id,
+      latestScore,
+      openFlags: openFlags ?? [],
+    });
+
+    if (stageGateErrors.length > 0) {
+      await supabaseAdmin.from("audit_log").insert({
+        workspace_id: entry.workspace_id,
+        actor_id: userId,
+        action_type: "roadmap_transition_blocked",
+        entity_type: "roadmap_entry",
+        entity_id: entry.id,
+        entity_label: useCaseName,
+        metadata: {
+          use_case_id: entry.use_case_id,
+          attempted_from_stage: fromStage,
+          attempted_to_stage: toStage,
+          reason: "stage_gate_failed",
+          gate_errors: stageGateErrors,
+        },
+      });
+      await notifyTransitionBlocked({
+        workspaceId: entry.workspace_id,
+        workspaceSlug: entry.workspaces?.slug ?? "",
+        useCaseId: entry.use_case_id,
+        useCaseName: useCaseName,
+        roadmapEntryId: entry.id,
+        attemptedFromStage: fromStage,
+        attemptedToStage: toStage,
+        actorId: userId,
+      });
+      return {
+        ok: false,
+        code: "stage_gate_failed",
+        message: stageGateErrors[0] ?? "Roadmap stage gate failed.",
+        gateErrors: stageGateErrors,
+      };
+    }
 
     if (hardStops.length > 0) {
       // Audit the blocked attempt
@@ -342,8 +394,8 @@ export const moveRoadmapEntry = createServerFn({ method: "POST" })
       actorId: userId,
     });
 
-    // Stage-driven governance flags (ARTICLE_11_DOCUMENTATION on reaching
-    // production, CHANGE_MANAGEMENT on Pilot → Production). Idempotent via
+    // Stage-driven governance flags (SDAIA technical documentation on reaching
+    // production, CHANGE_MANAGEMENT on Pilot -> Production). Idempotent via
     // the (use_case_id, rule_code) unique constraint, so re-entry is safe.
     try {
       const { data: uc } = await supabaseAdmin
@@ -379,7 +431,7 @@ export const moveRoadmapEntry = createServerFn({ method: "POST" })
         // approval; re-running them is harmless (idempotent) but noisy in
         // notifications, so we narrow to the two stage-only codes.
         (f) =>
-          f.rule_code === "ARTICLE_11_DOCUMENTATION" ||
+          f.rule_code === "SDAIA_TECHNICAL_DOCUMENTATION" ||
           f.rule_code === "CHANGE_MANAGEMENT",
       );
       if (stageDerived.length > 0) {
@@ -400,6 +452,62 @@ export const moveRoadmapEntry = createServerFn({ method: "POST" })
 
     return { ok: true, from: fromStage, to: toStage };
   });
+
+function validateRoadmapStageGate(input: {
+  fromStage: RoadmapStage;
+  toStage: RoadmapStage;
+  ownerId: string | null;
+  latestScore: {
+    id: string;
+    classification: string | null;
+    priority: number | null;
+    delivery_readiness: number | null;
+  } | null;
+  openFlags: Array<{ id: string; severity: string; status: string }>;
+}): string[] {
+  const order: Record<RoadmapStage, number> = {
+    backlog: 0,
+    pilot: 1,
+    production: 2,
+    scaling: 3,
+    retired: 4,
+  };
+  if (order[input.toStage] <= order[input.fromStage] || input.toStage === "retired") {
+    return [];
+  }
+
+  const errors: string[] = [];
+  const unresolvedReviewFlags = input.openFlags.filter(
+    (f) =>
+      (f.severity === "hard_stop" || f.severity === "requires_action") &&
+      (f.status === "open" || f.status === "in_progress"),
+  );
+
+  if (input.toStage === "pilot") {
+    if (!input.ownerId) errors.push("Assign an owner before starting a pilot.");
+    if (!input.latestScore) errors.push("Score the use case before starting a pilot.");
+    if (input.latestScore?.classification === "Not Ready") {
+      errors.push("Not Ready use cases must be reshaped before pilot.");
+    }
+  }
+
+  if (input.toStage === "production") {
+    if (!input.ownerId) errors.push("Production requires an accountable owner.");
+    if (!input.latestScore) errors.push("Production requires an official use-case score.");
+    if ((input.latestScore?.delivery_readiness ?? 0) < 50) {
+      errors.push("Delivery readiness is too low for production.");
+    }
+  }
+
+  if (input.toStage === "scaling") {
+    if (!input.ownerId) errors.push("Scaling requires a named service owner.");
+    if (unresolvedReviewFlags.length > 0) {
+      errors.push("Resolve or formally accept blocker/action governance flags before scaling.");
+    }
+  }
+
+  return errors;
+}
 
 // =====================================================================
 // Governance flag mutations

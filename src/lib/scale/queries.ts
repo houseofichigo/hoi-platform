@@ -125,7 +125,7 @@ export interface GovernanceFlagRow {
   use_case_id: string;
   roadmap_entry_id: string | null;
   rule_code: string;
-  rule_source: "eu_ai_act" | "gdpr" | "internal_policy" | string;
+  rule_source: "sdaia" | "pdpl" | "ndmo" | "nca_sama" | "saip" | "internal_policy" | string;
   severity: "hard_stop" | "requires_action" | "advisory" | string;
   status: "open" | "in_progress" | "resolved" | "accepted_risk" | "not_applicable" | string;
   assignee_id: string | null;

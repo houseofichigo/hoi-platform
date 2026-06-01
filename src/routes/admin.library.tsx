@@ -1,19 +1,21 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Upload } from "lucide-react";
+import { Archive, Copy, Plus, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { useSuperAdmin } from "@/hooks/useSuperAdmin";
+import { useHoiAdmin } from "@/hooks/useHoiAdmin";
+import { AdminPageHeader, AdminShell } from "@/components/admin/AdminShell";
 import {
+  archiveLibraryItem,
   createLibraryItem,
-  deleteLibraryItem,
+  duplicateLibraryItem,
   listLibraryItems,
   updateLibraryItem,
   uploadLibraryFile,
 } from "@/lib/library/queries";
 import { TYPE_LIST, TYPE_SCHEMAS } from "@/lib/library/typeSchemas";
-import type { LibraryItem, LibraryType } from "@/lib/library/types";
+import type { LibraryEditorialStatus, LibraryItem, LibraryType } from "@/lib/library/types";
 import { isLibraryType, LIBRARY_TYPES } from "@/lib/library/types";
 import { MODULES, PHASES } from "@/lib/curriculum";
 
@@ -23,24 +25,25 @@ export const Route = createFileRoute("/admin/library")({
 
 function AdminLibrary() {
   const { user } = useAuth();
-  const { isSuperAdmin, loading } = useSuperAdmin();
+  const admin = useHoiAdmin();
   const qc = useQueryClient();
   const [typeFilter, setTypeFilter] = useState<LibraryType | "">("");
-  const [pubFilter, setPubFilter] = useState<"all" | "published" | "draft">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | LibraryEditorialStatus>("all");
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<LibraryItem | "new" | null>(null);
 
   const { data: items = [], isLoading } = useQuery({
-    enabled: isSuperAdmin,
+    enabled: admin.isHoiAdmin,
     queryKey: ["library", "admin", "all"],
-    queryFn: () => listLibraryItems({ includeUnpublished: true }),
+    queryFn: () => listLibraryItems({ includeUnpublished: true, includeArchived: true }),
   });
 
   const filtered = useMemo(() => {
     return items.filter((it) => {
       if (typeFilter && it.type !== typeFilter) return false;
-      if (pubFilter === "published" && !it.published) return false;
-      if (pubFilter === "draft" && it.published) return false;
+      if (statusFilter !== "all" && (it.editorial_status ?? (it.published ? "published" : "draft")) !== statusFilter) {
+        return false;
+      }
       if (search.trim()) {
         const q = search.trim().toLowerCase();
         const hay = [it.title, it.summary ?? "", it.tags.join(" ")].join(" ").toLowerCase();
@@ -48,41 +51,212 @@ function AdminLibrary() {
       }
       return true;
     });
-  }, [items, typeFilter, pubFilter, search]);
+  }, [items, typeFilter, statusFilter, search]);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["library"] });
   };
 
-  const deleteMut = useMutation({
-    mutationFn: (id: string) => deleteLibraryItem(id),
+  const archiveMut = useMutation({
+    mutationFn: (it: LibraryItem) => archiveLibraryItem(it, user?.id),
     onSuccess: () => {
-      toast.success("Deleted");
+      toast.success("Archived");
       invalidate();
     },
     onError: (e) => toast.error((e as Error).message),
   });
 
-  const togglePublish = useMutation({
-    mutationFn: (it: LibraryItem) => updateLibraryItem(it.id, { published: !it.published, version: it.version }),
+  const duplicateMut = useMutation({
+    mutationFn: (it: LibraryItem) => duplicateLibraryItem(it, user!.id),
     onSuccess: (it) => {
-      toast.success(it.published ? "Published" : "Unpublished");
+      toast.success(`Duplicated "${it.title}"`);
       invalidate();
     },
     onError: (e) => toast.error((e as Error).message),
   });
 
-  if (loading) return <p className="p-8 text-[13px] text-slate">Loading…</p>;
-  if (!user) return <p className="p-8 text-[14px] text-navy">Sign in required.</p>;
-  if (!isSuperAdmin) return <p className="p-8 text-[14px] text-navy">Super-admin access required.</p>;
+  const setStatus = useMutation({
+    mutationFn: (args: { item: LibraryItem; editorial_status: LibraryEditorialStatus }) =>
+      updateLibraryItem(args.item.id, {
+        editorial_status: args.editorial_status,
+        version: args.item.version,
+        changed_by: user?.id,
+      }),
+    onSuccess: () => {
+      toast.success("Status updated");
+      invalidate();
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
 
   return (
-    <div className="mx-auto w-full max-w-[1180px] space-y-6 px-6 py-10">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="eyebrow">ADMIN · LIBRARY CMS</p>
-          <h1 className="h-display-md mt-1">Manage the HOI library.</h1>
+    <AdminShell>
+      <AdminPageHeader
+        eyebrow="ADMIN · LIBRARY CMS"
+        title="Manage the HOI library."
+        lead="Create, review, publish, archive, and version the global content that powers Discover."
+        action={
+          admin.canManageContent && (
+            <button
+              type="button"
+              onClick={() => setEditing("new")}
+              className="inline-flex items-center gap-1.5 rounded-md bg-navy px-3 py-2 text-[13px] font-medium text-white hover:opacity-90"
+            >
+              <Plus className="h-4 w-4" /> New item
+            </button>
+          )
+        }
+      />
+
+      <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search title/summary/tags…"
+          className="flex-1 min-w-[200px] rounded-md border border-chalk bg-paper px-2.5 py-1.5 text-[13px] text-navy outline-none focus:border-terracotta"
+        />
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value as LibraryType | "")}
+          className="rounded-md border border-chalk bg-paper px-2.5 py-1.5 text-[13px] text-navy outline-none"
+        >
+          <option value="">All types</option>
+          {TYPE_LIST.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.plural}
+            </option>
+          ))}
+        </select>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+          className="rounded-md border border-chalk bg-paper px-2.5 py-1.5 text-[13px] text-navy outline-none"
+        >
+          <option value="all">All statuses</option>
+          <option value="draft">Draft</option>
+          <option value="in_review">In review</option>
+          <option value="published">Published</option>
+          <option value="archived">Archived</option>
+        </select>
+      </div>
+
+      {isLoading ? (
+        <p className="text-[13px] text-slate">Loading…</p>
+      ) : (
+        <div className="overflow-x-auto rounded-md border border-chalk">
+          <table className="w-full text-[13px]">
+            <thead className="bg-mist font-mono text-[11px] uppercase tracking-[0.14em] text-slate">
+              <tr>
+                <th className="px-3 py-2 text-left">Title</th>
+                <th className="px-3 py-2 text-left">Type</th>
+                <th className="px-3 py-2 text-left">Editorial status</th>
+                <th className="px-3 py-2 text-left">Review</th>
+                <th className="px-3 py-2 text-left">v</th>
+                <th className="px-3 py-2 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((it) => {
+                const status = it.editorial_status ?? (it.published ? "published" : "draft");
+                return (
+                  <tr key={it.id} className="border-t border-chalk text-navy">
+                    <td className="px-3 py-2">
+                      <button onClick={() => setEditing(it)} className="hover:text-terracotta">
+                        {it.title}
+                      </button>
+                    </td>
+                    <td className="px-3 py-2">{TYPE_SCHEMAS[it.type].label}</td>
+                    <td className="px-3 py-2">
+                      {admin.canManageContent ? (
+                        <select
+                          value={status}
+                          onChange={(e) =>
+                            setStatus.mutate({
+                              item: it,
+                              editorial_status: e.target.value as LibraryEditorialStatus,
+                            })
+                          }
+                          className="rounded-md border border-chalk bg-paper px-2 py-1 text-[12px]"
+                        >
+                          <option value="draft">Draft</option>
+                          <option value="in_review">In review</option>
+                          <option value="published">Published</option>
+                          <option value="archived">Archived</option>
+                        </select>
+                      ) : (
+                        <StatusPill status={status} />
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-slate">
+                      {it.last_reviewed_at ? new Date(it.last_reviewed_at).toLocaleDateString() : "Not reviewed"}
+                    </td>
+                    <td className="px-3 py-2 font-mono text-[11px] text-slate">{it.version}</td>
+                    <td className="px-3 py-2 text-right">
+                      {admin.canManageContent && (
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => duplicateMut.mutate(it)}
+                            className="text-slate hover:text-navy"
+                            title="Duplicate"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`Archive "${it.title}"?`)) archiveMut.mutate(it);
+                            }}
+                            className="text-slate hover:text-terracotta"
+                            title="Archive"
+                          >
+                            <Archive className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-3 py-6 text-center text-slate">
+                    No items match the filters.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
+      )}
+
+      {editing && admin.canManageContent && user && (
+        <ItemEditor
+          item={editing === "new" ? null : editing}
+          userId={user.id}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            invalidate();
+            setEditing(null);
+          }}
+        />
+      )}
+      </div>
+    </AdminShell>
+  );
+}
+
+function StatusPill({ status }: { status: string }) {
+  return (
+    <span className="rounded-full border border-chalk px-2 py-0.5 text-[11px] text-slate">
+      {status.replace("_", " ")}
+    </span>
+  );
+}
+
+/*
+ * Editor implementation below remains local because every library type has
+ * unique metadata fields and the modal needs direct access to TYPE_SCHEMAS.
+ */
         <button
           type="button"
           onClick={() => setEditing("new")}

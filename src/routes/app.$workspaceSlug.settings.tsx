@@ -2,17 +2,21 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useWorkspaceProfile } from "@/hooks/useWorkspaceProfile";
 import { useUseCaseProfile } from "@/hooks/useUseCaseProfile";
+import { useOnboardingChecklist, useOnboardingMutations } from "@/hooks/useOnboardingChecklist";
 import { WORKSPACE_PROFILE_SCHEMA } from "@/lib/profile/workspace-profile";
 import { UserProfileCard } from "@/components/profile/UserProfileCard";
 import { NotificationPreferencesCard } from "@/components/profile/NotificationPreferencesCard";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/$workspaceSlug/settings")({
   component: WorkspaceSettings,
 });
 
 function WorkspaceSettings() {
-  const { workspace } = useWorkspace();
+  const { workspace, isAdmin } = useWorkspace();
   const { data, isComplete } = useWorkspaceProfile();
+  const { data: checklist } = useOnboardingChecklist();
+  const { restoreChecklist } = useOnboardingMutations();
   if (!workspace) return null;
 
   return (
@@ -22,7 +26,7 @@ function WorkspaceSettings() {
         Workspace <span className="accent-italic">settings.</span>
       </h1>
       <p className="lead mt-4 max-w-[60ch]">
-        Manage your profile, company context, and notification preferences.
+        Manage company context, use-case context, personal details, and notification preferences.
       </p>
 
       <div className="card mt-10 max-w-[560px]">
@@ -31,7 +35,37 @@ function WorkspaceSettings() {
         <p className="mt-2 font-mono text-[12px] tracking-[0.1em] text-slate">{workspace.slug}</p>
       </div>
 
-      <MembersCard workspaceName={workspace.name} />
+      <MembersCard workspaceName={workspace.name} workspaceSlug={workspace.slug} isAdmin={isAdmin} />
+
+      <div className="card mt-6 max-w-[560px]">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="eyebrow-muted">Onboarding checklist</p>
+            <p className="mt-2 text-[14px] text-graphite">
+              {checklist?.dismissedAt
+                ? "The setup checklist is hidden. Restore it if you want the guided path back on the workspace home."
+                : checklist?.shouldRender
+                  ? "The setup checklist is visible on the workspace home."
+                  : "The checklist appears for fresh admin workspaces while setup is still active."}
+            </p>
+          </div>
+          {isAdmin && checklist?.dismissedAt && (
+            <button
+              type="button"
+              disabled={restoreChecklist.isPending}
+              onClick={() => {
+                restoreChecklist.mutate(undefined, {
+                  onSuccess: () => toast.success("Checklist restored"),
+                  onError: (e) => toast.error((e as Error).message),
+                });
+              }}
+              className="btn-ichigo btn-ichigo-outline shrink-0 text-[13px]"
+            >
+              {restoreChecklist.isPending ? "Restoring…" : "Restore"}
+            </button>
+          )}
+        </div>
+      </div>
 
 
 
@@ -41,8 +75,8 @@ function WorkspaceSettings() {
             <p className="eyebrow-muted">Company profile</p>
             <p className="mt-2 text-[14px] text-graphite">
               {isComplete
-                ? "Your company profile is set. Examples across the training use these values."
-                : "Set up your company profile so examples are generated from your real context."}
+                ? "Your company profile is set. Examples, Discover recommendations, and KSA governance guidance use these values."
+                : "Set up your company profile so examples, recommendations, and Saudi-market governance guidance use your real context."}
             </p>
           </div>
           <Link
@@ -86,26 +120,40 @@ function WorkspaceSettings() {
   );
 }
 
-function MembersCard({ workspaceName }: { workspaceName: string }) {
+function MembersCard({
+  workspaceName,
+  workspaceSlug,
+  isAdmin,
+}: {
+  workspaceName: string;
+  workspaceSlug: string;
+  isAdmin: boolean;
+}) {
   return (
     <div className="card mt-6 max-w-[560px]">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="eyebrow-muted">Members</p>
           <p className="mt-2 text-[14px] text-graphite">
-            You're the only member of <span className="text-navy">{workspaceName}</span>. Multi-seat
-            invites and roles ship in a later release.
+            {isAdmin
+              ? <>Invite teammates to <span className="text-navy">{workspaceName}</span> and choose the right access level for each person.</>
+              : <>View your workspace membership. Ask an owner or admin to invite additional teammates.</>}
           </p>
         </div>
-        <button
-          type="button"
-          disabled
-          className="btn-ichigo btn-ichigo-outline shrink-0 cursor-not-allowed text-[13px] opacity-60"
-          aria-label="Invite teammates (coming soon)"
-          title="Coming soon"
-        >
-          Invite
-        </button>
+        {isAdmin ? (
+          <Link
+            to="/app/$workspaceSlug/invite"
+            params={{ workspaceSlug }}
+            className="btn-ichigo btn-ichigo-outline shrink-0 text-[13px]"
+            aria-label="Invite teammates"
+          >
+            Invite
+          </Link>
+        ) : (
+          <span className="rounded-full border border-chalk bg-mist px-3 py-1 text-[12px] text-slate">
+            Read-only
+          </span>
+        )}
       </div>
     </div>
   );

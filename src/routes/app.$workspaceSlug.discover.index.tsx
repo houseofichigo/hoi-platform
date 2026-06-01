@@ -3,7 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { useWorkspaceProfile } from "@/hooks/useWorkspaceProfile";
 import { listLibraryItems } from "@/lib/library/queries";
+import type { LibraryItem } from "@/lib/library/types";
 import { TYPE_LIST, TYPE_SCHEMAS } from "@/lib/library/typeSchemas";
 import { LibraryItemCard } from "@/components/library/LibraryItemCard";
 
@@ -13,6 +15,7 @@ export const Route = createFileRoute("/app/$workspaceSlug/discover/")({
 
 function DiscoverHome() {
   const { workspace } = useWorkspace();
+  const { data: profile } = useWorkspaceProfile();
   const [search, setSearch] = useState("");
 
   const { data: items = [] } = useQuery({
@@ -35,6 +38,7 @@ function DiscoverHome() {
   }, [items, search]);
 
   const recent = useMemo(() => items.slice(0, 6), [items]);
+  const recommended = useMemo(() => recommendForProfile(items, profile), [items, profile]);
   if (!workspace) return null;
   const slug = workspace.slug;
 
@@ -76,6 +80,33 @@ function DiscoverHome() {
         </section>
       ) : (
         <>
+          <section>
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <p className="eyebrow-muted mb-3">RECOMMENDED FOR YOUR WORKSPACE</p>
+              </div>
+              {profile?.country && (
+                <span className="rounded-full border border-chalk bg-mist px-2 py-0.5 text-[11px] text-slate">
+                  {profile.country as string}
+                </span>
+              )}
+            </div>
+            {recommended.length === 0 ? (
+              <div className="card border-l-[3px] border-l-chalk">
+                <p className="text-[14px] text-navy">Recommendations will sharpen after your company profile is complete.</p>
+                <p className="mt-1 text-[12px] text-slate">
+                  Add entity type, regulatory overlays, and data residency sensitivity in Settings.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {recommended.map((it) => (
+                  <LibraryItemCard key={it.id} item={it} />
+                ))}
+              </div>
+            )}
+          </section>
+
           <section>
             <p className="eyebrow-muted mb-3">CATEGORIES</p>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
@@ -128,4 +159,47 @@ function DiscoverHome() {
       <span className="sr-only">{TYPE_SCHEMAS.prompts.label}</span>
     </div>
   );
+}
+
+function recommendForProfile(
+  items: LibraryItem[],
+  profile: Record<string, string | string[] | undefined> | null | undefined,
+): LibraryItem[] {
+  if (!profile) return [];
+  const signals = [
+    profile.country,
+    profile.industry,
+    profile.entity_type,
+    profile.data_residency_sensitivity,
+    ...(Array.isArray(profile.regulatory_overlays) ? profile.regulatory_overlays : []),
+  ]
+    .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
+    .map((v) => v.toLowerCase());
+
+  if (signals.length === 0) return [];
+
+  return items
+    .map((item) => {
+      const haystack = [
+        item.title,
+        item.summary ?? "",
+        item.tags.join(" "),
+        JSON.stringify(item.metadata ?? {}),
+      ]
+        .join(" ")
+        .toLowerCase();
+      const signalScore = signals.reduce(
+        (score, signal) => score + (haystack.includes(signal) ? 2 : 0),
+        0,
+      );
+      const ksaScore = ["sdaia", "pdpl", "ndmo", "nca", "sama", "saip", "saudi", "ksa"].reduce(
+        (score, signal) => score + (haystack.includes(signal) ? 1 : 0),
+        0,
+      );
+      return { item, score: signalScore + ksaScore };
+    })
+    .filter((row) => row.score > 0)
+    .sort((a, b) => b.score - a.score || b.item.created_at.localeCompare(a.item.created_at))
+    .slice(0, 4)
+    .map((row) => row.item);
 }
