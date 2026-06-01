@@ -130,6 +130,12 @@ export interface GovernanceFlagRow {
   status: "open" | "in_progress" | "resolved" | "accepted_risk" | "not_applicable" | string;
   assignee_id: string | null;
   resolution_notes: string | null;
+  reviewer_role: string | null;
+  evidence_requirements: string[] | null;
+  source_snapshot: Record<string, unknown> | null;
+  resolved_reason: string | null;
+  resolved_at: string | null;
+  recomputed_at: string | null;
   created_at: string;
   updated_at: string;
   use_cases: { id: string; name: string; function: string } | null;
@@ -145,7 +151,8 @@ export const governanceFlagsFullQO = (workspaceId: string | undefined) =>
         .from("governance_flags")
         .select(
           `id, workspace_id, use_case_id, roadmap_entry_id, rule_code, rule_source, severity, status,
-           assignee_id, resolution_notes, created_at, updated_at,
+           assignee_id, resolution_notes, reviewer_role, evidence_requirements, source_snapshot,
+           resolved_reason, resolved_at, recomputed_at, created_at, updated_at,
            use_cases ( id, name, function ),
            roadmap_entries ( id, stage )`,
         )

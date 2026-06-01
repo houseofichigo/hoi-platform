@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Check, X } from "lucide-react";
+import { Check, RotateCcw, X } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useApprovals } from "@/hooks/useBuild";
@@ -17,7 +17,7 @@ function useReviewApproval() {
   const { workspace } = useWorkspace();
   const decideApproval = useServerFn(decideBuildApproval);
   return useMutation({
-    mutationFn: async (input: { approvalId: string; useCaseId: string; decision: "approved" | "rejected"; comment: string }) => {
+    mutationFn: async (input: { approvalId: string; useCaseId: string; decision: "approved" | "rejected" | "returned"; comment: string }) => {
       return decideApproval({ data: input });
     },
     onSuccess: () => {
@@ -40,7 +40,7 @@ function ApprovalsPage() {
   const review = useReviewApproval();
   const [comments, setComments] = useState<Record<string, string>>({});
 
-  const decide = async (a: (typeof approvals)[number], decision: "approved" | "rejected") => {
+  const decide = async (a: (typeof approvals)[number], decision: "approved" | "rejected" | "returned") => {
     try {
       await review.mutateAsync({
         approvalId: a.id,
@@ -48,7 +48,13 @@ function ApprovalsPage() {
         decision,
         comment: comments[a.id] ?? "",
       });
-      toast.success(decision === "approved" ? "Approved and governance checked" : "Marked rejected");
+      toast.success(
+        decision === "approved"
+          ? "Approved and governance checked"
+          : decision === "returned"
+            ? "Returned for changes"
+            : "Marked rejected",
+      );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Update failed");
     }
@@ -93,6 +99,13 @@ function ApprovalsPage() {
                     <X className="h-4 w-4" /> Reject
                   </button>
                   <button
+                    onClick={() => decide(a, "returned")}
+                    disabled={review.isPending}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-chalk px-3 py-1.5 text-[13px] font-medium text-navy hover:bg-mist disabled:opacity-60"
+                  >
+                    <RotateCcw className="h-4 w-4" /> Return for changes
+                  </button>
+                  <button
                     onClick={() => decide(a, "approved")}
                     disabled={review.isPending}
                     className="inline-flex items-center gap-1.5 rounded-md bg-terracotta px-3 py-1.5 text-[13px] font-medium text-white hover:opacity-90 disabled:opacity-60"
@@ -121,7 +134,11 @@ function ApprovalsPage() {
                 <span
                   className={[
                     "rounded-full px-2 py-0.5 text-[11px] font-medium",
-                    a.decision === "approved" ? "bg-terracotta text-white" : "bg-chalk text-navy",
+                    a.decision === "approved"
+                      ? "bg-terracotta text-white"
+                      : a.decision === "returned"
+                        ? "bg-mist text-navy"
+                        : "bg-chalk text-navy",
                   ].join(" ")}
                 >
                   {a.decision}

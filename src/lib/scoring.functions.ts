@@ -266,7 +266,7 @@ export function computeScore({ block1, block2, block3, block4 }: ComputeInput): 
   const dataReadiness = str(block2.data_readiness);
   const accessibility = str(block2.accessibility);
   const structure = str(block2.structure);
-  const classification = str(block2.classification);
+  const dataClassification = str(block2.classification);
   const historical = str(block2.historical_cases);
   const actionability = str(block2.actionability);
   const personalData = bool(block2.personal_data);
@@ -371,7 +371,7 @@ export function computeScore({ block1, block2, block3, block4 }: ComputeInput): 
   const reversibilityRisk =
     mapOrMissing(reversibility, E.reversibility_risk) ?? E.missing_risk;
   const piiRisk = personalData ? E.pii_risk_yes : E.pii_risk_no;
-  const classRisk = mapOrMissing(classification, E.classification_risk) ?? E.missing_risk;
+  const classRisk = mapOrMissing(dataClassification, E.classification_risk) ?? E.missing_risk;
   const toleranceRisk = mapOrMissing(riskTolerance, E.risk_tolerance) ?? E.missing_risk;
   const risk = clampScore((reversibilityRisk + piiRisk + classRisk + toleranceRisk) / 4);
 
@@ -755,7 +755,7 @@ export const scoreUseCase = createServerFn({ method: "POST" })
       confidence,
     };
 
-    const { error: snapshotErr } = await supabaseAdmin
+    const { error: snapshotErr } = await (supabaseAdmin as any)
       .from("use_case_score_snapshots")
       .insert({
         workspace_id: uc.workspace_id,

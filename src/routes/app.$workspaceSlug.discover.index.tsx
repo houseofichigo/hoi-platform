@@ -1,10 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
+import { toast } from "sonner";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { useWorkspaceProfile } from "@/hooks/useWorkspaceProfile";
 import { listLibraryItems } from "@/lib/library/queries";
+import { addLibraryItemToRoadmap } from "@/lib/library/roadmap.functions";
 import type { LibraryItem } from "@/lib/library/types";
 import { TYPE_LIST, TYPE_SCHEMAS } from "@/lib/library/typeSchemas";
 import { LibraryItemCard } from "@/components/library/LibraryItemCard";
@@ -14,9 +17,11 @@ export const Route = createFileRoute("/app/$workspaceSlug/discover/")({
 });
 
 function DiscoverHome() {
-  const { workspace } = useWorkspace();
+  const { workspace, isAdmin } = useWorkspace();
   const { data: profile } = useWorkspaceProfile();
   const [search, setSearch] = useState("");
+  const qc = useQueryClient();
+  const addToRoadmapFn = useServerFn(addLibraryItemToRoadmap);
 
   const { data: items = [] } = useQuery({
     queryKey: ["library", "all", "published"],
@@ -39,6 +44,22 @@ function DiscoverHome() {
 
   const recent = useMemo(() => items.slice(0, 6), [items]);
   const recommended = useMemo(() => recommendForProfile(items, profile), [items, profile]);
+  const addToRoadmap = useMutation({
+    mutationFn: (item: LibraryItem) => {
+      if (!workspace) throw new Error("Workspace not ready");
+      return addToRoadmapFn({ data: { workspaceId: workspace.id, libraryItemId: item.id } });
+    },
+    onSuccess: (res) => {
+      if (!res.ok) {
+        toast.error(res.message);
+        return;
+      }
+      toast.success("Added to Deploy roadmap");
+      qc.invalidateQueries({ queryKey: ["scale", "roadmap_entries", workspace?.id] });
+      qc.invalidateQueries({ queryKey: ["use_cases", workspace?.id] });
+    },
+    onError: (error) => toast.error((error as Error).message),
+  });
   if (!workspace) return null;
   const slug = workspace.slug;
 
@@ -73,7 +94,12 @@ function DiscoverHome() {
           ) : (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {filtered.map((it) => (
-                <LibraryItemCard key={it.id} item={it} />
+                <LibraryItemCard
+                  key={it.id}
+                  item={it}
+                  onAddToRoadmap={isAdmin ? (item) => addToRoadmap.mutate(item) : undefined}
+                  addToRoadmapDisabled={addToRoadmap.isPending}
+                />
               ))}
             </div>
           )}
@@ -100,8 +126,14 @@ function DiscoverHome() {
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {recommended.map((it) => (
-                  <LibraryItemCard key={it.id} item={it} />
+                {recommended.map((row) => (
+                  <LibraryItemCard
+                    key={row.item.id}
+                    item={row.item}
+                    recommendationReason={row.reason}
+                    onAddToRoadmap={isAdmin ? (item) => addToRoadmap.mutate(item) : undefined}
+                    addToRoadmapDisabled={addToRoadmap.isPending}
+                  />
                 ))}
               </div>
             )}
@@ -138,7 +170,12 @@ function DiscoverHome() {
               <p className="eyebrow-muted mb-3">RECENT</p>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {recent.map((it) => (
-                  <LibraryItemCard key={it.id} item={it} />
+                  <LibraryItemCard
+                    key={it.id}
+                    item={it}
+                    onAddToRoadmap={isAdmin ? (item) => addToRoadmap.mutate(item) : undefined}
+                    addToRoadmapDisabled={addToRoadmap.isPending}
+                  />
                 ))}
               </div>
             </section>
@@ -164,7 +201,7 @@ function DiscoverHome() {
 function recommendForProfile(
   items: LibraryItem[],
   profile: Record<string, string | string[] | undefined> | null | undefined,
-): LibraryItem[] {
+): Array<{ item: LibraryItem; reason: string }> {
   if (!profile) return [];
   const signals = [
     profile.country,
@@ -188,18 +225,20 @@ function recommendForProfile(
       ]
         .join(" ")
         .toLowerCase();
-      const signalScore = signals.reduce(
-        (score, signal) => score + (haystack.includes(signal) ? 2 : 0),
-        0,
-      );
+      const matchedSignals = signals.filter((signal) => haystack.includes(signal));
+      const signalScore = matchedSignals.length * 2;
       const ksaScore = ["sdaia", "pdpl", "ndmo", "nca", "sama", "saip", "saudi", "ksa"].reduce(
         (score, signal) => score + (haystack.includes(signal) ? 1 : 0),
         0,
       );
-      return { item, score: signalScore + ksaScore };
+      const reason =
+        matchedSignals.length > 0
+          ? `Recommended because it matches ${matchedSignals.slice(0, 3).join(", ")}.`
+          : "Recommended because it carries Saudi-market governance relevance.";
+      return { item, score: signalScore + ksaScore, reason };
     })
     .filter((row) => row.score > 0)
     .sort((a, b) => b.score - a.score || b.item.created_at.localeCompare(a.item.created_at))
     .slice(0, 4)
-    .map((row) => row.item);
+    .map((row) => ({ item: row.item, reason: row.reason }));
 }

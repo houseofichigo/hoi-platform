@@ -228,7 +228,7 @@ export const scoreAssessment = createServerFn({ method: "POST" })
     });
     const inputHash = fnv1aHash(rawInputs);
 
-    const { data: snapshot, error: insertErr } = await supabaseAdmin
+    const { data: snapshot, error: insertErr } = await (supabaseAdmin as any)
       .from("assessment_score_snapshots")
       .insert({
         workspace_id: data.workspaceId,
@@ -256,7 +256,7 @@ export const scoreAssessment = createServerFn({ method: "POST" })
       action_type: "assessment_score_computed",
       entity_type: "assessment",
       entity_id: snapshot.id,
-      entity_label: `Assessment maturity · ${computed.maturity_label}`,
+      entity_label: `Assessment maturity - ${computed.maturity_label}`,
       metadata: {
         overall_score: computed.overall_score,
         maturity_label: computed.maturity_label,

@@ -1,9 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { useAuth } from "@/hooks/useAuth";
 import { useWorkspaceProfile } from "@/hooks/useWorkspaceProfile";
 import { useUseCaseProfile } from "@/hooks/useUseCaseProfile";
 import { useOnboardingChecklist, useOnboardingMutations } from "@/hooks/useOnboardingChecklist";
 import { WORKSPACE_PROFILE_SCHEMA } from "@/lib/profile/workspace-profile";
+import { supabase } from "@/integrations/supabase/client";
 import { UserProfileCard } from "@/components/profile/UserProfileCard";
 import { NotificationPreferencesCard } from "@/components/profile/NotificationPreferencesCard";
 import { toast } from "sonner";
@@ -14,9 +17,40 @@ export const Route = createFileRoute("/app/$workspaceSlug/settings")({
 
 function WorkspaceSettings() {
   const { workspace, isAdmin } = useWorkspace();
+  const { user } = useAuth();
   const { data, isComplete } = useWorkspaceProfile();
   const { data: checklist } = useOnboardingChecklist();
   const { restoreChecklist } = useOnboardingMutations();
+  const qc = useQueryClient();
+  const defaultWorkspace = useQuery({
+    enabled: !!user,
+    queryKey: ["profile-default-workspace", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("default_workspace_id")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data?.default_workspace_id ?? null;
+    },
+  });
+  const setDefaultWorkspace = useMutation({
+    mutationFn: async () => {
+      if (!user || !workspace) throw new Error("Workspace not ready");
+      const { error } = await supabase
+        .from("profiles")
+        .update({ default_workspace_id: workspace.id })
+        .eq("user_id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["profile-default-workspace", user?.id] });
+      qc.invalidateQueries({ queryKey: ["app-index-bootstrap", user?.id] });
+      toast.success("Default workspace updated");
+    },
+    onError: (error) => toast.error((error as Error).message),
+  });
   if (!workspace) return null;
 
   return (
@@ -30,9 +64,27 @@ function WorkspaceSettings() {
       </p>
 
       <div className="card mt-10 max-w-[560px]">
-        <p className="eyebrow-muted">Current workspace</p>
-        <p className="h-heading-md mt-2">{workspace.name}</p>
-        <p className="mt-2 font-mono text-[12px] tracking-[0.1em] text-slate">{workspace.slug}</p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="eyebrow-muted">Current workspace</p>
+            <p className="h-heading-md mt-2">{workspace.name}</p>
+            <p className="mt-2 font-mono text-[12px] tracking-[0.1em] text-slate">{workspace.slug}</p>
+          </div>
+          {defaultWorkspace.data === workspace.id ? (
+            <span className="rounded-full border border-chalk bg-mist px-3 py-1 text-[12px] text-slate">
+              Default
+            </span>
+          ) : (
+            <button
+              type="button"
+              disabled={setDefaultWorkspace.isPending}
+              onClick={() => setDefaultWorkspace.mutate()}
+              className="btn-ichigo btn-ichigo-outline shrink-0 text-[13px]"
+            >
+              {setDefaultWorkspace.isPending ? "Saving…" : "Set default"}
+            </button>
+          )}
+        </div>
       </div>
 
       <MembersCard workspaceName={workspace.name} workspaceSlug={workspace.slug} isAdmin={isAdmin} />

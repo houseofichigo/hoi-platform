@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -12,7 +11,6 @@ import {
   useAuditMonthCount,
   useWorkspaceMemberProfiles,
 } from "@/hooks/useScaleRoadmap";
-import { governanceFlagsFullQO } from "@/lib/scale/queries";
 import { STAGE_LABEL, type RoadmapStage } from "@/lib/scale/types";
 import { generateEvidencePack } from "@/lib/scale/scale.functions";
 
@@ -24,7 +22,6 @@ function ScaleOverview() {
   const { workspace } = useWorkspace();
   const { data: entries = [] } = useRoadmapEntries();
   const { data: flags = [] } = useGovernanceFlagsSummary();
-  const { data: fullFlags = [] } = useQuery(governanceFlagsFullQO(workspace?.id));
   const { data: history = [] } = useRecentStageHistory(5);
   const { data: reviewCounts } = usePostPilotReviewCounts();
   const { data: auditMonth } = useAuditMonthCount();

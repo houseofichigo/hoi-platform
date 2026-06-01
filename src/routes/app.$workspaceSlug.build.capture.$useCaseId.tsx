@@ -56,6 +56,7 @@ function CaptureWizardPage() {
   }, [existing, stepIdx]);
 
   const [showErrors, setShowErrors] = useState(false);
+  const [reviewMode, setReviewMode] = useState(false);
 
   if (!workspace) return null;
   if (isLoading) return <p className="text-[13px] text-graphite">Loading…</p>;
@@ -93,6 +94,7 @@ function CaptureWizardPage() {
     }
     try {
       await saveBlock(true);
+      setReviewMode(false);
       setShowErrors(false);
       if (stepIdx < STEPS.length - 1) setStepIdx(stepIdx + 1);
     } catch (e) {
@@ -106,11 +108,7 @@ function CaptureWizardPage() {
   };
 
   const submitFinal = async () => {
-    const valuesByStep = new Map<number, WizardValues>();
-    for (const s of STEPS) {
-      const saved = captures.find((c) => c.block_number === s.number)?.responses as WizardValues | undefined;
-      valuesByStep.set(s.number, s.number === step.number ? values : saved ?? {});
-    }
+    const valuesByStep = getValuesByStep(STEPS, captures, step.number, values);
     const missing = STEPS.flatMap((s) =>
       validateStep(s, valuesByStep.get(s.number) ?? {}).map((label) => `${s.shortTitle}: ${label}`),
     );
@@ -127,6 +125,29 @@ function CaptureWizardPage() {
       navigate({ to: "/app/$workspaceSlug/build/approvals", params: { workspaceSlug } });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Submit failed");
+    }
+  };
+
+  const reviewThenSubmit = async () => {
+    if (reviewMode) {
+      await submitFinal();
+      return;
+    }
+    const valuesByStep = getValuesByStep(STEPS, captures, step.number, values);
+    const missing = STEPS.flatMap((s) =>
+      validateStep(s, valuesByStep.get(s.number) ?? {}).map((label) => `${s.shortTitle}: ${label}`),
+    );
+    if (missing.length > 0) {
+      setShowErrors(true);
+      toast.error(`Complete required fields before review: ${missing.slice(0, 3).join(", ")}${missing.length > 3 ? "…" : ""}`);
+      return;
+    }
+    try {
+      await saveBlock(true);
+      setReviewMode(true);
+      toast.success("Review your capture before submission");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
     }
   };
 
@@ -162,6 +183,15 @@ function CaptureWizardPage() {
 
       <QuickGuide step={step} />
 
+      {reviewMode && (
+        <ReviewPanel
+          captures={captures}
+          currentStepNumber={step.number}
+          currentValues={values}
+          onEdit={() => setReviewMode(false)}
+        />
+      )}
+
       <section className="card">
         <div className="flex items-start gap-3">
           <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-navy bg-paper font-mono text-[13px] text-navy">
@@ -189,13 +219,75 @@ function CaptureWizardPage() {
       <FooterBar
         onBack={goBack}
         onSaveDraft={handleSaveDraft}
-        onContinue={stepIdx < STEPS.length - 1 ? goNext : submitFinal}
+        onContinue={stepIdx < STEPS.length - 1 ? goNext : reviewThenSubmit}
         isFinal={stepIdx === STEPS.length - 1}
+        reviewMode={reviewMode}
         saving={save.isPending}
         submitting={submit.isPending}
         allComplete={allComplete}
       />
     </div>
+  );
+}
+
+function getValuesByStep(
+  steps: StepDef[],
+  captures: Array<{ block_number: number; responses: Record<string, unknown> }>,
+  currentStepNumber: number,
+  currentValues: WizardValues,
+) {
+  const valuesByStep = new Map<number, WizardValues>();
+  for (const s of steps) {
+    const saved = captures.find((c) => c.block_number === s.number)?.responses as WizardValues | undefined;
+    valuesByStep.set(s.number, s.number === currentStepNumber ? currentValues : saved ?? {});
+  }
+  return valuesByStep;
+}
+
+function ReviewPanel({
+  captures,
+  currentStepNumber,
+  currentValues,
+  onEdit,
+}: {
+  captures: Array<{ block_number: number; responses: Record<string, unknown> }>;
+  currentStepNumber: number;
+  currentValues: WizardValues;
+  onEdit: () => void;
+}) {
+  const valuesByStep = getValuesByStep(STEPS, captures, currentStepNumber, currentValues);
+  return (
+    <section className="rounded-md border border-navy bg-white p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="eyebrow-muted">Review before submission</p>
+          <h2 className="mt-1 text-[20px] font-semibold text-navy">Confirm the use-case mapping.</h2>
+          <p className="mt-1 max-w-[68ch] text-[13px] text-graphite">
+            The backend will compute the official score snapshot, prioritization, and governance pre-check from these saved inputs.
+          </p>
+        </div>
+        <button type="button" onClick={onEdit} className="btn-ichigo btn-ichigo-outline text-[13px]">
+          Continue editing
+        </button>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        {STEPS.map((s) => {
+          const values = valuesByStep.get(s.number) ?? {};
+          const filled = s.fields.filter((field) => isFieldFilled(field, values[field.key])).length;
+          return (
+            <div key={s.number} className="rounded-md border border-chalk bg-paper p-3">
+              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate">
+                Step {s.number} - {s.shortTitle}
+              </p>
+              <p className="mt-1 text-[13px] text-navy">
+                {filled}/{s.fields.length} fields captured
+              </p>
+              <p className="mt-1 text-[12px] text-slate">{s.title}</p>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -289,6 +381,7 @@ function FooterBar({
   onSaveDraft,
   onContinue,
   isFinal,
+  reviewMode,
   saving,
   submitting,
   allComplete,
@@ -297,6 +390,7 @@ function FooterBar({
   onSaveDraft: () => void;
   onContinue: () => void;
   isFinal: boolean;
+  reviewMode: boolean;
   saving: boolean;
   submitting: boolean;
   allComplete: boolean;
@@ -324,7 +418,7 @@ function FooterBar({
             className="inline-flex items-center gap-2 rounded-md bg-terracotta px-4 py-2 text-[13px] font-medium text-white hover:opacity-90 disabled:opacity-60"
           >
             <Send className="h-4 w-4" />
-            {submitting ? "Submitting…" : "Generate My Use Case Recommendation"}
+            {submitting ? "Submitting…" : reviewMode ? "Submit for approval" : "Review before submission"}
             <ArrowRight className="h-4 w-4" />
           </button>
         ) : (

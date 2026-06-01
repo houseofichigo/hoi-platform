@@ -16,7 +16,7 @@ function normalize(row: Row): LibraryItem {
 }
 
 export async function listLibraryItems(filters: LibraryListFilters = {}): Promise<LibraryItem[]> {
-  let q = supabase
+  let q: any = supabase
     .from("library_items")
     .select("*")
     .is("workspace_id", null)
@@ -37,7 +37,7 @@ export async function listLibraryItems(filters: LibraryListFilters = {}): Promis
 
   const { data, error } = await q;
   if (error) throw error;
-  return (data ?? []).map((r) => normalize(r as Row));
+  return ((data ?? []) as unknown[]).map((r) => normalize(r as Row));
 }
 
 export async function getLibraryItem(id: string): Promise<LibraryItem | null> {
@@ -82,7 +82,7 @@ export async function createLibraryItem(
     module_ids: input.module_ids ?? [],
     phase_ids: input.phase_ids ?? [],
     tags: input.tags ?? [],
-    published: input.published ?? input.editorial_status === "published",
+    published: input.published ?? (input.editorial_status === "published"),
     editorial_status: input.editorial_status ?? (input.published ? "published" : "draft"),
     content_url: input.content_url ?? null,
     metadata: (input.metadata ?? {}) as never,
@@ -130,8 +130,9 @@ export async function updateLibraryItem(
 }
 
 export async function deleteLibraryItem(id: string): Promise<void> {
-  const { error } = await supabase.from("library_items").delete().eq("id", id);
-  if (error) throw error;
+  const current = await getLibraryItem(id);
+  if (!current) return;
+  await archiveLibraryItem(current);
 }
 
 export async function archiveLibraryItem(
@@ -167,7 +168,11 @@ export async function duplicateLibraryItem(item: LibraryItem, userId: string): P
 }
 
 export async function setPublished(id: string, published: boolean, version: number): Promise<LibraryItem> {
-  return updateLibraryItem(id, { published, version });
+  return updateLibraryItem(id, {
+    published,
+    editorial_status: published ? "published" : "draft",
+    version,
+  });
 }
 
 export async function uploadLibraryFile(file: File, prefix = "uploads"): Promise<string> {

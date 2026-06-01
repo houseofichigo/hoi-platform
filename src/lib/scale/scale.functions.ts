@@ -47,13 +47,22 @@ async function persistDerivedFlags(
     severity: f.severity,
     status: "open" as const,
     created_by: ctx.actorId,
+    reviewer_role: reviewerRoleForSource(f.rule_source),
+    evidence_requirements: evidenceForRule(f.rule_code),
+    source_snapshot: {
+      source: ctx.source,
+      use_case_id: ctx.useCaseId,
+      roadmap_entry_id: ctx.roadmapEntryId,
+      metadata: f.metadata,
+    },
+    recomputed_at: new Date().toISOString(),
   }));
 
   // UNIQUE(use_case_id, rule_code) makes this idempotent across re-runs and
   // across both generation paths (post-approval + stage transition).
   const { data: inserted, error: insErr } = await supabaseAdmin
     .from("governance_flags")
-    .upsert(rows, { onConflict: "use_case_id,rule_code", ignoreDuplicates: true })
+    .upsert(rows as never, { onConflict: "use_case_id,rule_code", ignoreDuplicates: true })
     .select("id, rule_code");
   if (insErr) throw new Error(insErr.message);
   if (!inserted || inserted.length === 0) return { created: 0, flags: [] };
@@ -82,6 +91,43 @@ async function persistDerivedFlags(
   });
 
   return { created: inserted.length, flags: inserted.map((r) => r.rule_code) };
+}
+
+function reviewerRoleForSource(source: DerivedGovernanceFlag["rule_source"]): string {
+  switch (source) {
+    case "pdpl":
+      return "DPO";
+    case "sdaia":
+      return "RAIO / AI governance owner";
+    case "ndmo":
+      return "CDO / Data Governance";
+    case "nca_sama":
+      return "CISO";
+    case "saip":
+      return "Legal";
+    case "internal_policy":
+    default:
+      return "Business owner";
+  }
+}
+
+function evidenceForRule(ruleCode: DerivedGovernanceFlag["rule_code"]): string[] {
+  if (ruleCode.startsWith("PDPL_")) {
+    return ["processing purpose", "data minimisation note", "privacy impact review", "cross-border transfer evidence"];
+  }
+  if (ruleCode.startsWith("SDAIA_")) {
+    return ["AI system purpose", "human oversight design", "validation results", "technical documentation"];
+  }
+  if (ruleCode.startsWith("NDMO_")) {
+    return ["data owner", "classification", "lineage", "quality controls"];
+  }
+  if (ruleCode.startsWith("NCA_")) {
+    return ["security review", "integration inventory", "access controls", "incident owner"];
+  }
+  if (ruleCode.startsWith("SAIP_")) {
+    return ["IP ownership note", "training-data origin", "third-party licence check"];
+  }
+  return ["owner sign-off", "change record", "rollback path"];
 }
 
 const Input = z.object({ useCaseId: z.string().uuid() });
@@ -541,9 +587,9 @@ export const updateGovernanceFlag = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<UpdateFlagResult> => {
     const { supabase, userId } = context;
 
-    const { data: flag, error: flagErr } = await supabase
+    const { data: flag, error: flagErr } = await (supabaseAdmin as any)
       .from("governance_flags")
-      .select("id, workspace_id, use_case_id, roadmap_entry_id, rule_code, status, assignee_id, resolution_notes, use_cases(name), workspaces(slug)")
+      .select("id, workspace_id, use_case_id, roadmap_entry_id, rule_code, status, assignee_id, resolution_notes, resolved_reason, resolved_at, use_cases(name), workspaces(slug)")
       .eq("id", data.flagId)
       .maybeSingle();
     if (flagErr || !flag) return { ok: false, code: "not_found", message: "Flag not found" };
@@ -578,11 +624,20 @@ export const updateGovernanceFlag = createServerFn({ method: "POST" })
     }
 
     const patch: Record<string, unknown> = {};
-    if (statusChanged) patch.status = data.status;
+    if (statusChanged) {
+      patch.status = data.status;
+      if (data.status && isResolutionStatus(data.status)) {
+        patch.resolved_at = new Date().toISOString();
+        patch.resolved_reason = data.resolutionNotes ?? `Marked ${data.status}`;
+      } else {
+        patch.resolved_at = null;
+        patch.resolved_reason = null;
+      }
+    }
     if (assigneeChanged) patch.assignee_id = data.assigneeId;
     if (notesChanged) patch.resolution_notes = data.resolutionNotes;
 
-    const { error: updErr } = await supabase
+    const { error: updErr } = await (supabaseAdmin as any)
       .from("governance_flags")
       .update(patch as never)
       .eq("id", flag.id);
@@ -602,7 +657,11 @@ export const updateGovernanceFlag = createServerFn({ method: "POST" })
         entity_id: flag.id,
         entity_label: label,
         before_state: { status: flag.status },
-        after_state: { status: data.status },
+        after_state: {
+          status: data.status,
+          resolved_at: patch.resolved_at ?? null,
+          resolved_reason: patch.resolved_reason ?? null,
+        },
         metadata: baseMeta,
       });
     }
@@ -713,6 +772,130 @@ export const bulkMarkAdvisoryNotApplicable = createServerFn({ method: "POST" })
     await supabaseAdmin.from("audit_log").insert(auditRows);
 
     return { ok: true as const, changed: targets.length };
+  });
+
+export const recomputeGovernanceFlags = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => BulkInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: membership } = await supabase
+      .from("workspace_members")
+      .select("role")
+      .eq("workspace_id", data.workspaceId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    const isAdmin = membership?.role === "owner" || membership?.role === "admin";
+    if (!isAdmin) return { ok: false as const, code: "not_admin", created: 0, resolved: 0 };
+
+    const { data: workspace } = await supabaseAdmin
+      .from("workspaces")
+      .select("slug")
+      .eq("id", data.workspaceId)
+      .maybeSingle();
+
+    const { data: useCases, error: ucErr } = await supabaseAdmin
+      .from("use_cases")
+      .select("id, name, function")
+      .eq("workspace_id", data.workspaceId)
+      .in("status", ["scored", "submitted", "approved"]);
+    if (ucErr) throw new Error(ucErr.message);
+
+    let created = 0;
+    let resolved = 0;
+
+    for (const uc of useCases ?? []) {
+      const [{ data: score }, { data: captures }, { data: entry }, { data: activeFlags }] = await Promise.all([
+        supabaseAdmin
+          .from("use_case_scores")
+          .select("reason_codes")
+          .eq("use_case_id", uc.id)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabaseAdmin
+          .from("use_case_captures")
+          .select("responses")
+          .eq("use_case_id", uc.id),
+        supabaseAdmin
+          .from("roadmap_entries")
+          .select("id, stage")
+          .eq("use_case_id", uc.id)
+          .maybeSingle(),
+        supabaseAdmin
+          .from("governance_flags")
+          .select("id, rule_code, status")
+          .eq("workspace_id", data.workspaceId)
+          .eq("use_case_id", uc.id)
+          .in("status", ["open", "in_progress"]),
+      ]);
+
+      const mergedCapture: Record<string, unknown> = {};
+      for (const c of captures ?? []) {
+        Object.assign(mergedCapture, (c.responses ?? {}) as Record<string, unknown>);
+      }
+
+      const derived = deriveGovernanceFlags({
+        useCaseFunction: uc.function,
+        reasonCodes: (score?.reason_codes ?? []) as string[],
+        capture: mergedCapture,
+        stage: (entry?.stage ?? undefined) as RoadmapStage | undefined,
+      });
+      const persisted = await persistDerivedFlags(derived, {
+        workspaceId: data.workspaceId,
+        workspaceSlug: workspace?.slug ?? "",
+        useCaseId: uc.id,
+        useCaseName: uc.name,
+        actorId: userId,
+        roadmapEntryId: entry?.id ?? null,
+        source: "manual_recompute",
+      });
+      created += persisted.created;
+
+      const derivedCodes = new Set<string>(derived.map((flag) => flag.rule_code));
+      const stale = (activeFlags ?? []).filter((flag) => !derivedCodes.has(flag.rule_code));
+      if (stale.length > 0) {
+        const ids = stale.map((flag) => flag.id);
+        const resolvedAt = new Date().toISOString();
+        const { error: updErr } = await supabaseAdmin
+          .from("governance_flags")
+          .update({
+            status: "resolved",
+            resolved_reason: "Resolved by governance recomputation; condition no longer applies.",
+            resolved_at: resolvedAt,
+            recomputed_at: resolvedAt,
+          } as never)
+          .in("id", ids);
+        if (updErr) throw new Error(updErr.message);
+        resolved += ids.length;
+        await supabaseAdmin.from("audit_log").insert(
+          stale.map((flag) => ({
+            workspace_id: data.workspaceId,
+            actor_id: userId,
+            action_type: "governance_flag_auto_resolved",
+            entity_type: "governance_flag",
+            entity_id: flag.id,
+            entity_label: `${flag.rule_code} · ${uc.name}`,
+            before_state: { status: flag.status },
+            after_state: { status: "resolved", resolved_at: resolvedAt },
+            metadata: { use_case_id: uc.id, source: "manual_recompute" },
+          })) as never,
+        );
+      }
+    }
+
+    await supabaseAdmin.from("audit_log").insert({
+      workspace_id: data.workspaceId,
+      actor_id: userId,
+      action_type: "governance_flags_recomputed",
+      entity_type: "workspace",
+      entity_id: data.workspaceId,
+      entity_label: "Governance flag register",
+      metadata: { created, resolved },
+    } as never);
+
+    return { ok: true as const, created, resolved };
   });
 
 // =====================================================================
@@ -952,12 +1135,12 @@ export const generateEvidencePack = createServerFn({ method: "POST" })
         .select("*")
         .eq("workspace_id", data.workspaceId)
         .order("created_at", { ascending: false }),
-      supabaseAdmin
+      (supabaseAdmin as any)
         .from("use_case_score_snapshots")
         .select("id, use_case_id, score_type, scoring_model_version, input_hash, computed_outputs, reason_codes, confidence, computed_at")
         .eq("workspace_id", data.workspaceId)
         .order("computed_at", { ascending: false }),
-      supabaseAdmin
+      (supabaseAdmin as any)
         .from("assessment_score_snapshots")
         .select("id, score_type, scoring_model_version, input_hash, computed_outputs, reason_codes, confidence, computed_at")
         .eq("workspace_id", data.workspaceId)
@@ -1008,7 +1191,7 @@ export const generateEvidencePack = createServerFn({ method: "POST" })
       },
       assessment_report: assessmentRes.data?.[0] ?? null,
       use_case_portfolio: roadmapRes.data ?? [],
-      priority_matrix: (scoreSnapshotsRes.data ?? []).map((snapshot) => ({
+      priority_matrix: ((scoreSnapshotsRes.data ?? []) as Array<Record<string, any>>).map((snapshot) => ({
         use_case_id: snapshot.use_case_id,
         scoring_model_version: snapshot.scoring_model_version,
         input_hash: snapshot.input_hash,

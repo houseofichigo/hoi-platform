@@ -69,7 +69,7 @@ function AssessCompletePage() {
     enabled: !!workspace && !!user,
     queryKey: ["assessment-score-latest", workspace?.id, user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("assessment_score_snapshots")
         .select("id, computed_outputs, scoring_model_version, confidence, computed_at")
         .eq("workspace_id", workspace!.id)
@@ -163,7 +163,7 @@ function AssessmentScorePanel({
         <div>
           <p className="eyebrow-muted">Official readiness score</p>
           <h2 className="mt-2 text-[22px] font-semibold text-navy">
-            {overall == null ? "Create the executive diagnostic snapshot" : `${overall}/100 · ${maturity}`}
+            {overall == null ? "Create the executive diagnostic snapshot" : `${overall}/100 - ${maturity}`}
           </h2>
           <p className="mt-2 max-w-[68ch] text-[13px] leading-relaxed text-graphite">
             This snapshot is the backend-owned assessment score used in reports, KSA readiness evidence,
@@ -176,17 +176,17 @@ function AssessmentScorePanel({
           onClick={onCompute}
           className="btn-ichigo btn-ichigo-primary text-[13px]"
         >
-          {isPending ? "Saving…" : overall == null ? "Compute official score" : "Recompute score"}
+          {isPending ? "Saving..." : overall == null ? "Compute official score" : "Recompute score"}
         </button>
       </div>
 
       {overall != null && (
         <div className="mt-5 grid gap-3 md:grid-cols-3">
-          <MiniMetric label="Evidence confidence" value={confidence == null ? "—" : `${confidence}/100`} />
-          <MiniMetric label="Weakest capability" value={weakest?.label ?? "—"} />
+          <MiniMetric label="Evidence confidence" value={confidence == null ? "-" : `${confidence}/100`} />
+          <MiniMetric label="Weakest capability" value={weakest?.label ?? "-"} />
           <MiniMetric
             label="Snapshot"
-            value={computedAt ? new Date(computedAt).toLocaleString() : "—"}
+            value={computedAt ? new Date(computedAt).toLocaleString() : "-"}
             detail={version ? `Model ${version}` : undefined}
           />
         </div>
@@ -197,7 +197,7 @@ function AssessmentScorePanel({
           <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate">Recommended next actions</p>
           <ul className="mt-2 space-y-1 text-[13px] text-navy">
             {actions.map((action) => (
-              <li key={action}>• {action}</li>
+              <li key={action}>- {action}</li>
             ))}
           </ul>
         </div>

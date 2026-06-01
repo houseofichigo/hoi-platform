@@ -76,12 +76,24 @@ function AdminLibrary() {
   });
 
   const setStatus = useMutation({
-    mutationFn: (args: { item: LibraryItem; editorial_status: LibraryEditorialStatus }) =>
-      updateLibraryItem(args.item.id, {
+    mutationFn: (args: { item: LibraryItem; editorial_status: LibraryEditorialStatus }) => {
+      if (args.editorial_status === "published") {
+        assertPublishable({
+          type: args.item.type,
+          title: args.item.title,
+          summary: args.item.summary,
+          moduleIds: args.item.module_ids,
+          phaseIds: args.item.phase_ids,
+          metadata: args.item.metadata,
+          contentUrl: args.item.content_url,
+        });
+      }
+      return updateLibraryItem(args.item.id, {
         editorial_status: args.editorial_status,
         version: args.item.version,
         changed_by: user?.id,
-      }),
+      });
+    },
     onSuccess: () => {
       toast.success("Status updated");
       invalidate();
@@ -253,6 +265,45 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
+function publishingIssues(input: {
+  type: LibraryType;
+  title: string;
+  summary: string | null;
+  moduleIds: string[];
+  phaseIds: string[];
+  metadata: Record<string, unknown>;
+  contentUrl: string | null;
+}) {
+  const schema = TYPE_SCHEMAS[input.type];
+  const issues: string[] = [];
+  if (!input.title.trim()) issues.push("title");
+  if (!input.summary?.trim()) issues.push("summary");
+  if (input.moduleIds.length === 0 && input.phaseIds.length === 0) {
+    issues.push("at least one module or phase mapping");
+  }
+  for (const field of schema.fields) {
+    if (field.required && !readField(input.metadata, field.key)) {
+      issues.push(field.label);
+    }
+  }
+  if (schema.fileUrlKey) {
+    const typeUrl = readField(input.metadata, schema.fileUrlKey);
+    const hasTypeUrl = typeof typeUrl === "string" && typeUrl.trim().length > 0;
+    const hasContentUrl = !!input.contentUrl?.trim();
+    if (!hasTypeUrl && !hasContentUrl) {
+      issues.push(schema.fields.find((f) => f.key === schema.fileUrlKey)?.label ?? schema.fileUrlKey);
+    }
+  }
+  return Array.from(new Set(issues));
+}
+
+function assertPublishable(input: Parameters<typeof publishingIssues>[0]) {
+  const issues = publishingIssues(input);
+  if (issues.length) {
+    throw new Error(`Before publishing, add ${issues.join(", ")}.`);
+  }
+}
+
 /*
  * Editor implementation below remains local because every library type has
  * unique metadata fields and the modal needs direct access to TYPE_SCHEMAS.
@@ -304,16 +355,16 @@ function ItemEditor({ item, userId, onClose, onSaved }: EditorProps) {
       // missing required check
       const missing = schema.fields.filter((f) => f.required && !readField(meta, f.key)).map((f) => f.label);
       if (missing.length) throw new Error(`Required: ${missing.join(", ")}`);
-      // file-based: when publishing, require either the type-specific URL or a content URL fallback
-      if (editorialStatus === "published" && schema.fileUrlKey) {
-        const typeUrl = readField(meta, schema.fileUrlKey);
-        const hasTypeUrl = typeof typeUrl === "string" && typeUrl.trim().length > 0;
-        const hasContentUrl = contentUrl.trim().length > 0;
-        if (!hasTypeUrl && !hasContentUrl) {
-          throw new Error(
-            `Published ${schema.label.toLowerCase()} needs a "${schema.fields.find((f) => f.key === schema.fileUrlKey)?.label ?? schema.fileUrlKey}" or a Content URL.`,
-          );
-        }
+      if (editorialStatus === "published") {
+        assertPublishable({
+          type,
+          title,
+          summary,
+          moduleIds,
+          phaseIds,
+          metadata: meta,
+          contentUrl,
+        });
       }
       const payload = {
         type,

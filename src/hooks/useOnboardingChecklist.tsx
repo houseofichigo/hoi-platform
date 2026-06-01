@@ -197,6 +197,16 @@ export function useOnboardingMutations() {
   const invalidate = () =>
     qc.invalidateQueries({ queryKey: ["onboarding-checklist", workspace?.id, user?.id] });
 
+  const trackEvent = async (eventType: string, metadata: Record<string, unknown> = {}) => {
+    if (!user || !workspace) return;
+    await (supabase as any).from("onboarding_events").insert({
+      workspace_id: workspace.id,
+      user_id: user.id,
+      event_type: eventType,
+      metadata: metadata as never,
+    } as never);
+  };
+
   const updateWorkedExample = useMutation({
     mutationFn: async (value: string) => {
       // Read current worked example so we can reset use-case profile completion
@@ -223,6 +233,7 @@ export function useOnboardingMutations() {
         .update(update)
         .eq("id", workspace!.id);
       if (error) throw error;
+      await trackEvent("worked_example_selected", { worked_example: value, changed });
     },
     onSuccess: invalidate,
   });
@@ -235,6 +246,7 @@ export function useOnboardingMutations() {
         .update({ tour_completed_at: new Date().toISOString() })
         .eq("user_id", user!.id);
       if (error) throw error;
+      await trackEvent("methodology_tour_completed");
     },
     onSuccess: invalidate,
   });
@@ -246,6 +258,7 @@ export function useOnboardingMutations() {
         .update({ library_visited_at: new Date().toISOString() })
         .eq("user_id", user!.id);
       if (error) throw error;
+      await trackEvent("discover_library_visited");
     },
     onSuccess: invalidate,
   });
@@ -257,6 +270,7 @@ export function useOnboardingMutations() {
         .update({ onboarding_dismissed_at: new Date().toISOString() })
         .eq("id", workspace!.id);
       if (error) throw error;
+      await trackEvent("checklist_hidden");
     },
     onSuccess: invalidate,
   });
@@ -268,6 +282,7 @@ export function useOnboardingMutations() {
         .update({ onboarding_dismissed_at: null })
         .eq("id", workspace!.id);
       if (error) throw error;
+      await trackEvent("checklist_restored");
     },
     onSuccess: invalidate,
   });

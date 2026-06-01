@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS public.hoi_admin_users (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+DROP TRIGGER IF EXISTS hoi_admin_users_set_updated_at ON public.hoi_admin_users;
 CREATE TRIGGER hoi_admin_users_set_updated_at
 BEFORE UPDATE ON public.hoi_admin_users
 FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
@@ -161,6 +162,64 @@ SET editorial_status = CASE
 CREATE INDEX IF NOT EXISTS library_items_editorial_status_idx
 ON public.library_items (editorial_status);
 
+DROP POLICY IF EXISTS "Super-admins can read all library items" ON public.library_items;
+DROP POLICY IF EXISTS "Super-admins can insert library items" ON public.library_items;
+DROP POLICY IF EXISTS "Super-admins can update library items" ON public.library_items;
+DROP POLICY IF EXISTS "Super-admins can delete library items" ON public.library_items;
+
+CREATE POLICY "HOI admins can read all library items"
+ON public.library_items FOR SELECT
+TO authenticated
+USING (public.is_hoi_admin(auth.uid()));
+
+CREATE POLICY "HOI content admins can insert library items"
+ON public.library_items FOR INSERT
+TO authenticated
+WITH CHECK (public.is_hoi_admin(auth.uid(), ARRAY['owner','admin','content_editor']));
+
+CREATE POLICY "HOI content admins can update library items"
+ON public.library_items FOR UPDATE
+TO authenticated
+USING (public.is_hoi_admin(auth.uid(), ARRAY['owner','admin','content_editor']))
+WITH CHECK (public.is_hoi_admin(auth.uid(), ARRAY['owner','admin','content_editor']));
+
+CREATE POLICY "HOI owners and admins can delete library items"
+ON public.library_items FOR DELETE
+TO authenticated
+USING (public.is_hoi_admin(auth.uid(), ARRAY['owner','admin']));
+
+DROP POLICY IF EXISTS "Super-admins can upload library-files" ON storage.objects;
+DROP POLICY IF EXISTS "Super-admins can update library-files" ON storage.objects;
+DROP POLICY IF EXISTS "Super-admins can delete library-files" ON storage.objects;
+
+CREATE POLICY "HOI content admins can upload library-files"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (
+  bucket_id = 'library-files'
+  AND public.is_hoi_admin(auth.uid(), ARRAY['owner','admin','content_editor'])
+);
+
+CREATE POLICY "HOI content admins can update library-files"
+ON storage.objects FOR UPDATE
+TO authenticated
+USING (
+  bucket_id = 'library-files'
+  AND public.is_hoi_admin(auth.uid(), ARRAY['owner','admin','content_editor'])
+)
+WITH CHECK (
+  bucket_id = 'library-files'
+  AND public.is_hoi_admin(auth.uid(), ARRAY['owner','admin','content_editor'])
+);
+
+CREATE POLICY "HOI content admins can delete library-files"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (
+  bucket_id = 'library-files'
+  AND public.is_hoi_admin(auth.uid(), ARRAY['owner','admin','content_editor'])
+);
+
 CREATE OR REPLACE FUNCTION public.sync_library_item_editorial_state()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -228,6 +287,7 @@ CREATE TABLE IF NOT EXISTS public.plans (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+DROP TRIGGER IF EXISTS plans_set_updated_at ON public.plans;
 CREATE TRIGGER plans_set_updated_at
 BEFORE UPDATE ON public.plans
 FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
@@ -254,6 +314,7 @@ CREATE TABLE IF NOT EXISTS public.workspace_subscriptions (
   UNIQUE (workspace_id)
 );
 
+DROP TRIGGER IF EXISTS workspace_subscriptions_set_updated_at ON public.workspace_subscriptions;
 CREATE TRIGGER workspace_subscriptions_set_updated_at
 BEFORE UPDATE ON public.workspace_subscriptions
 FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
@@ -334,6 +395,7 @@ CREATE TABLE IF NOT EXISTS public.hoi_admin_notes (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+DROP TRIGGER IF EXISTS hoi_admin_notes_set_updated_at ON public.hoi_admin_notes;
 CREATE TRIGGER hoi_admin_notes_set_updated_at
 BEFORE UPDATE ON public.hoi_admin_notes
 FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();

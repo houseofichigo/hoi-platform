@@ -75,7 +75,7 @@ CREATE POLICY "Use case modifiers can insert score snapshots"
 ON public.use_case_score_snapshots FOR INSERT
 TO authenticated
 WITH CHECK (
-  public.is_use_case_modifier(use_case_id, auth.uid())
+  public.can_modify_use_case(use_case_id, auth.uid())
 );
 
 ALTER TABLE public.governance_flags

@@ -1,43 +1,50 @@
-# Admin Bootstrap — Seeding the First Super-Admin
+# Admin Bootstrap — Seeding the First HOI Admin
 
-The Library CMS at `/admin/library` is gated by `profiles.role = 'super_admin'`.
-No user has this role by default. To grant it to a known user, run the SQL
-below against the project's database (via Lovable Cloud → Backend → SQL editor,
-or `psql`).
+The internal admin backend at `/admin` is gated by `hoi_admin_users`.
+No user has this role by default. To grant it to a known House of Ichigo
+operator, run the SQL below against the project's database.
 
 ## 1. Find the target user
 
 ```sql
-select u.id, u.email, p.role
+select u.id, u.email, a.role, a.status
 from auth.users u
-left join public.profiles p on p.user_id = u.id
+left join public.hoi_admin_users a on a.user_id = u.id
 where u.email = 'you@example.com';
 ```
 
 ## 2. Promote them
 
 ```sql
-update public.profiles
-set role = 'super_admin'
-where user_id = (select id from auth.users where email = 'you@example.com');
+insert into public.hoi_admin_users (user_id, role, status, created_by)
+values (
+  (select id from auth.users where email = 'you@example.com'),
+  'owner',
+  'active',
+  (select id from auth.users where email = 'you@example.com')
+)
+on conflict (user_id) do update
+set role = excluded.role,
+    status = 'active',
+    updated_at = now();
 ```
 
-The user must sign out and back in (or refresh) for the `useSuperAdmin`
-hook to pick up the new role.
+The user must sign out and back in, or refresh, for `useHoiAdmin` to pick up
+the new role.
 
 ## 3. Revoke
 
 ```sql
-update public.profiles
-set role = null
+update public.hoi_admin_users
+set status = 'suspended'
 where user_id = (select id from auth.users where email = 'you@example.com');
 ```
 
 ## Safety notes
 
-- There is intentionally NO in-app "promote me" button. Self-promotion would
-  let any authenticated user grant themselves write access to the global
-  Library.
-- RLS on `library_items` checks `is_super_admin(auth.uid())` for all writes,
-  so promoting a user is the only way to enable CMS writes.
+- There is intentionally NO in-app "promote me" button.
+- HOI admin access is separate from customer workspace roles.
+- `profiles.role` is legacy and is no longer the source of truth for admin
+  access.
+- RLS on admin tables checks `is_hoi_admin(auth.uid())`.
 - Only project owners with database access can perform this step.

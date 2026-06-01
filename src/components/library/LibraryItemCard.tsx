@@ -6,6 +6,9 @@ import { TYPE_SCHEMAS } from "@/lib/library/typeSchemas";
 
 interface Props {
   item: LibraryItem;
+  recommendationReason?: string;
+  onAddToRoadmap?: (item: LibraryItem) => void;
+  addToRoadmapDisabled?: boolean;
 }
 
 function asString(v: unknown): string {
@@ -32,7 +35,7 @@ function nested(meta: Record<string, unknown>, path: string): string {
   return asString(cur);
 }
 
-export function LibraryItemCard({ item }: Props) {
+export function LibraryItemCard({ item, recommendationReason, onAddToRoadmap, addToRoadmapDisabled }: Props) {
   const schema = TYPE_SCHEMAS[item.type];
   const Icon = schema.icon;
 
@@ -52,6 +55,12 @@ export function LibraryItemCard({ item }: Props) {
         <p className="text-[13px] leading-relaxed text-slate">{item.summary}</p>
       )}
 
+      {recommendationReason && (
+        <div className="rounded-md border border-chalk bg-mist px-2 py-1.5 text-[12px] text-navy">
+          {recommendationReason}
+        </div>
+      )}
+
       <TypeBody item={item} />
 
       {(item.tags.length > 0 || item.module_ids.length > 0) && (
@@ -67,6 +76,17 @@ export function LibraryItemCard({ item }: Props) {
             </span>
           ))}
         </div>
+      )}
+
+      {onAddToRoadmap && (
+        <button
+          type="button"
+          disabled={addToRoadmapDisabled}
+          onClick={() => onAddToRoadmap(item)}
+          className="mt-2 rounded-full border border-chalk bg-paper px-3 py-1.5 text-left text-[12px] font-medium text-navy hover:bg-mist disabled:opacity-50"
+        >
+          Add to roadmap
+        </button>
       )}
     </article>
   );

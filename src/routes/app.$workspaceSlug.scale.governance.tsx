@@ -13,6 +13,7 @@ import {
 import {
   updateGovernanceFlag,
   bulkMarkAdvisoryNotApplicable,
+  recomputeGovernanceFlags,
 } from "@/lib/scale/scale.functions";
 
 export const Route = createFileRoute("/app/$workspaceSlug/scale/governance")({
@@ -163,6 +164,7 @@ function GovernancePage() {
   );
 
   const bulkFn = useServerFn(bulkMarkAdvisoryNotApplicable);
+  const recomputeFn = useServerFn(recomputeGovernanceFlags);
   const bulk = useMutation({
     mutationFn: () => bulkFn({ data: { workspaceId: workspace!.id } }),
     onSuccess: (res) => {
@@ -177,6 +179,21 @@ function GovernancePage() {
       setConfirmBulk(false);
     },
     onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "Bulk update failed"),
+  });
+
+  const recompute = useMutation({
+    mutationFn: () => recomputeFn({ data: { workspaceId: workspace!.id } }),
+    onSuccess: (res) => {
+      if (!res.ok) {
+        toast.error("Only workspace admins can recompute flags");
+        return;
+      }
+      toast.success(`Governance register refreshed: ${res.created} created, ${res.resolved} resolved`);
+      qc.invalidateQueries({ queryKey: ["scale", "governance_flags_full", workspace?.id] });
+      qc.invalidateQueries({ queryKey: ["scale", "governance_flags_summary", workspace?.id] });
+      qc.invalidateQueries({ queryKey: ["scale", "audit_month_count", workspace?.id] });
+    },
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "Recompute failed"),
   });
 
   if (!workspace) return null;
@@ -200,18 +217,27 @@ function GovernancePage() {
             </span>
           )}
           {isAdmin && (
-            <button
-              onClick={() => setConfirmBulk(true)}
-              disabled={bulkCandidates.length === 0}
-              className="rounded-full border border-chalk bg-paper px-3 py-1.5 text-[12px] text-navy hover:bg-mist disabled:opacity-50"
-              title={
-                bulkCandidates.length === 0
-                  ? "No open/in-progress advisory flags"
-                  : `Affects ${bulkCandidates.length} advisory flag(s)`
-              }
-            >
-              Mark all advisory as not applicable
-            </button>
+            <>
+              <button
+                onClick={() => recompute.mutate()}
+                disabled={recompute.isPending}
+                className="rounded-full border border-chalk bg-paper px-3 py-1.5 text-[12px] text-navy hover:bg-mist disabled:opacity-50"
+              >
+                {recompute.isPending ? "Refreshing…" : "Recompute flags"}
+              </button>
+              <button
+                onClick={() => setConfirmBulk(true)}
+                disabled={bulkCandidates.length === 0}
+                className="rounded-full border border-chalk bg-paper px-3 py-1.5 text-[12px] text-navy hover:bg-mist disabled:opacity-50"
+                title={
+                  bulkCandidates.length === 0
+                    ? "No open/in-progress advisory flags"
+                    : `Affects ${bulkCandidates.length} advisory flag(s)`
+                }
+              >
+                Mark all advisory as not applicable
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -456,6 +482,25 @@ function FlagDetail({
             </p>
           </div>
 
+          <div className="rounded-md border border-chalk bg-paper p-3">
+            <p className="text-[10px] uppercase tracking-wide text-slate">Reviewer and evidence</p>
+            <p className="mt-1 text-navy">{flag.reviewer_role ?? reviewerFallback(flag.rule_source)}</p>
+            <ul className="mt-2 space-y-1 text-[12px] text-graphite">
+              {(Array.isArray(flag.evidence_requirements) && flag.evidence_requirements.length > 0
+                ? flag.evidence_requirements
+                : evidenceFallback(flag.rule_source)
+              ).map((item) => (
+                <li key={item}>- {item}</li>
+              ))}
+            </ul>
+            {(flag.resolved_at || flag.resolved_reason) && (
+              <p className="mt-2 text-[11px] text-slate">
+                Resolved {flag.resolved_at ? new Date(flag.resolved_at).toLocaleString() : ""}
+                {flag.resolved_reason ? `: ${flag.resolved_reason}` : ""}
+              </p>
+            )}
+          </div>
+
           {isAdmin ? (
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
@@ -634,6 +679,40 @@ function ConfirmModal({
 function shortDate(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function reviewerFallback(source: string): string {
+  switch (source) {
+    case "pdpl":
+      return "DPO";
+    case "sdaia":
+      return "RAIO / AI governance owner";
+    case "ndmo":
+      return "CDO / Data Governance";
+    case "nca_sama":
+      return "CISO";
+    case "saip":
+      return "Legal";
+    default:
+      return "Business owner";
+  }
+}
+
+function evidenceFallback(source: string): string[] {
+  switch (source) {
+    case "pdpl":
+      return ["processing purpose", "privacy impact review", "transfer evidence"];
+    case "sdaia":
+      return ["AI purpose", "oversight design", "validation evidence"];
+    case "ndmo":
+      return ["data owner", "classification", "lineage"];
+    case "nca_sama":
+      return ["security review", "access controls", "incident owner"];
+    case "saip":
+      return ["IP ownership", "licence check", "training-data origin"];
+    default:
+      return ["owner sign-off", "change record", "rollback path"];
+  }
 }
 
 function describeAction(type: string): string {

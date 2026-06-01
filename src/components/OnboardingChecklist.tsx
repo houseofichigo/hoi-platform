@@ -366,7 +366,7 @@ export function OnboardingChecklist() {
     markTourCompleted.mutate(undefined, {
       onSuccess: () => {
         setTourOpen(false);
-        navigate({ to, params: { workspaceSlug: workspace.slug } });
+        navigate({ to, params: { workspaceSlug: workspace?.slug ?? "" } });
       },
       onError: (e) => toast.error((e as Error).message),
     });

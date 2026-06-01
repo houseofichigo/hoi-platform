@@ -219,7 +219,7 @@ export function TopShell({ children }: { children: ReactNode }) {
             ))}
             {isHoiAdmin && (
               <Link
-                to="/admin/library"
+                to="/admin"
                 className={navItemClass(pathname.includes("/admin"))}
               >
                 <Settings className="h-3.5 w-3.5" />
